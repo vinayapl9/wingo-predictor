@@ -1,7 +1,7 @@
 import streamlit as st
 
 # पेज कॉन्फ़िगरेशन - वाइड लेआउट
-st.set_page_config(page_title="AI Pro Master Predictor - Silent Movement", layout="wide")
+st.set_page_config(page_title="AI Pro Master Predictor - Smart History Edition", layout="wide")
 
 # --- सेशन स्टेट इनिशियलाइज़ेशन ---
 if 'history' not in st.session_state:
@@ -25,26 +25,32 @@ if 'correct_preds' not in st.session_state:
 if 'total_preds' not in st.session_state:
     st.session_state.total_preds = 0
 if 'last_commentary' not in st.session_state:
-    st.session_state.last_commentary = "नमस्ते! प्रो मॉडल सक्रिय है। साइलेंट मूवमेंट और सटीक ट्रेंड एनालिसिस चालू है।"
+    st.session_state.last_commentary = "नमस्ते! प्रो मॉडल सक्रिय है। स्मार्ट कलर-फ्लिप और नंबर रिपीटेशन डिटेक्टर चालू है।"
 if 'success_alert' not in st.session_state:
     st.session_state.success_alert = ""
+if 'speak_text' not in st.session_state:
+    st.session_state.speak_text = ""
+if 'sound_trigger' not in st.session_state:
+    st.session_state.sound_trigger = None
 
-# ट्रू एआई लर्निंग वेट्स (ये वेट्स गलतियों से खुद को अपडेट करेंगे)
+# ट्रू एआई लर्निंग वेट्स
 if 'rule_weights' not in st.session_state:
     st.session_state.rule_weights = {
-        'STREAK_FOLLOWER': 30.0,    # लंबी स्ट्रीक को पकड़ना (सर्वोच्च)
-        'ZIGZAG_PATTERN': 25.0,     # जिग-जैग (Small-Big-Small-Big) को पकड़ना
-        'COLOR_FLIP': 20.0,         # रंग बदलने पर साइज पलटना
-        'ZERO_FIVE_RULE': 15.0,     # 0 या 5 के आने का प्रभाव
-        'PROBABILITY_FLOW': 10.0    # जब कोई पैटर्न न हो, तो साइलेंट फ्लो
+        'NUMBER_REPEAT': 32.0,      # नंबर दोहराव (सबसे महत्वपूर्ण)
+        'STREAK_FOLLOWER': 28.0,    # लंबी स्ट्रीक
+        'SMART_COLOR_FLIP': 22.0,   # स्मार्ट कलर फ्लिप
+        'ZIGZAG_PATTERN': 18.0,     # जिग-जैग
+        'ZERO_FIVE_RULE': 15.0      # 0 या 5 नियम
     }
 
 # --- साइडबार सेटिंग्स ---
 st.sidebar.header("⚙️ प्रो एआई सेटिंग्स")
 st.session_state.base_bet = st.sidebar.number_input("शुरुआती बेट राशि (₹)", min_value=10, value=10, step=10)
+enable_voice = st.sidebar.checkbox("देवनागरी बोलकर घोषणा सुनें", value=True)
+enable_sound = st.sidebar.checkbox("स्पेशल विन/लॉस साउंड इफेक्ट्स", value=True)
 
 # ==========================================
-# 🎨 आपके द्वारा दिए गए सटीक कलर और साइज नियम
+# 🎨 सटीक कलर और साइज नियम
 # ==========================================
 def get_number_details(num):
     size = "Big" if num >= 5 else "Small"
@@ -75,11 +81,11 @@ def get_number_details(num):
     return size, color
 
 # ==========================================
-# 🧠 साइलेंट मूवमेंट & ट्रू एआई प्रिडिक्शन इंजन
+# 🧠 एडवांस्ड हिस्टोरिकल प्रिडिक्शन इंजन
 # ==========================================
-def advanced_pro_engine(history_data, weights):
+def smart_history_engine(history_data, weights):
     if len(history_data) < 3:
-        return "Big", 5, "Violet + Green", 90, "PROBABILITY_FLOW", "डेटा लोड हो रहा है, एआई पैटर्न स्कैन कर रहा है।"
+        return "Big", 5, "Violet + Green", 90, "DATA_GATHERING", "एआई पैटर्न को समझने के लिए डेटा जुटा रहा है।"
 
     recent_nums = [item['number'] for item in history_data]
     recent_sizes = [item['size'] for item in history_data]
@@ -88,7 +94,38 @@ def advanced_pro_engine(history_data, weights):
     last_size = recent_sizes[-1]
     last_num = recent_nums[-1]
 
-    # 1. स्ट्रीक चेकर (Streak Checker)
+    # 1. नंबर रिपीटेशन (Exact Number Repeat)
+    is_num_repeat = False
+    repeat_hist_action = "Same"
+    if len(recent_nums) >= 2 and recent_nums[-1] == recent_nums[-2]:
+        is_num_repeat = True
+        # इतिहास में चेक करें कि पिछली बार जब नंबर रिपीट हुआ था तो क्या हुआ था
+        for i in range(len(recent_nums)-2, 0, -1):
+            if recent_nums[i] == recent_nums[i-1]:
+                if i+1 < len(recent_sizes):
+                    repeat_hist_action = "Same" if recent_sizes[i+1] == recent_sizes[i] else "Opposite"
+                break
+
+    # 2. स्मार्ट कलर फ्लिप (Smart Color Flip)
+    color_flipped = False
+    color_flip_hist_action = "Opposite"
+    if len(recent_colors) >= 2:
+        prev_base = "Red" if "Red" in recent_colors[-2] else "Green"
+        curr_base = "Red" if "Red" in recent_colors[-1] else "Green"
+        if prev_base != curr_base:
+            color_flipped = True
+            # इतिहास में चेक करें कि पिछली बार कलर फ्लिप पर साइज पलटा था या सेम रहा था?
+            for i in range(len(recent_colors)-2, 0, -1):
+                p_c = "Red" if "Red" in recent_colors[i-1] else "Green"
+                c_c = "Red" if "Red" in recent_colors[i] else "Green"
+                if p_c != c_c:
+                    if recent_sizes[i] == recent_sizes[i-1]:
+                        color_flip_hist_action = "Same"
+                    else:
+                        color_flip_hist_action = "Opposite"
+                    break
+
+    # 3. स्ट्रीक चेकर
     streak_count = 0
     for s in reversed(recent_sizes):
         if s == last_size:
@@ -96,69 +133,58 @@ def advanced_pro_engine(history_data, weights):
         else:
             break
 
-    # 2. जिग-जैग चेकर (Zig-Zag Checker)
+    # 4. जिग-जैग चेकर
     is_zigzag = False
     if len(recent_sizes) >= 3:
         if recent_sizes[-1] != recent_sizes[-2] and recent_sizes[-2] != recent_sizes[-3]:
             is_zigzag = True
 
-    # 3. कलर फ्लिप चेकर (Color Flip Checker)
-    color_flipped = False
-    if len(recent_colors) >= 2:
-        # बेस कलर पहचानना (Red या Green)
-        prev_base = "Red" if "Red" in recent_colors[-2] else "Green"
-        curr_base = "Red" if "Red" in recent_colors[-1] else "Green"
-        if prev_base != curr_base:
-            color_flipped = True
-
-    # 4. 0 और 5 का नियम
-    is_zero_five = last_num in [0, 5]
-
-    # --- एआई डिसीजन मेकिंग (वजन के आधार पर प्राथमिकता) ---
+    # --- एआई डिसीजन मेकिंग (स्मार्ट प्राथमिकता) ---
     predicted_size = "Big"
     confidence = 90
-    used_rule = "PROBABILITY_FLOW"
-    status = "साइलेंट फ्लो: पिछले परिणामों का अनुसरण।"
+    used_rule = "DEFAULT_FLOW"
+    status = "शांत प्रवाह: एआई पिछले रुझानों का विश्लेषण कर रहा है।"
 
-    # एआई सबसे मजबूत (High Weight) नियम को पहले लागू करेगा
-    # स्ट्रीक को सबसे ज्यादा तवज्जो (अगर 2 या उससे ज्यादा बार आ चुका है)
-    if streak_count >= 2 and weights['STREAK_FOLLOWER'] > 15.0:
+    # नंबर रिपीटेशन की प्राथमिकता सबसे अधिक (यदि वजन ज्यादा है)
+    if is_num_repeat and weights['NUMBER_REPEAT'] > 15.0:
+        predicted_size = last_size if repeat_hist_action == "Same" else ("Small" if last_size == "Big" else "Big")
+        confidence = 96
+        used_rule = "NUMBER_REPEAT"
+        status = f"सुपर क्रैक: नंबर {last_num} रिपीट हुआ है! इतिहास के अनुसार एआई ने '{repeat_hist_action}' पैटर्न चुना है।"
+    
+    # स्ट्रीक को पकड़ना
+    elif streak_count >= 3 and weights['STREAK_FOLLOWER'] > weights['SMART_COLOR_FLIP']:
         predicted_size = last_size
         confidence = int(90 + min(9, streak_count * 1.5))
         used_rule = "STREAK_FOLLOWER"
-        status = f"साइलेंट मूवमेंट: लगातार {streak_count} बार '{last_size}' आ रहा है। ट्रेंड के खिलाफ नहीं जाना है।"
+        status = f"साइलेंट मूवमेंट: {streak_count} बार '{last_size}' आ चुका है, स्ट्रीक को टूटने नहीं देना है।"
     
-    # अगर स्ट्रीक नहीं है, लेकिन जिग-जैग चल रहा है
-    elif is_zigzag and weights['ZIGZAG_PATTERN'] > weights['COLOR_FLIP']:
-        predicted_size = "Small" if last_size == "Big" else "Big"
+    # स्मार्ट कलर फ्लिप
+    elif color_flipped and weights['SMART_COLOR_FLIP'] > weights['ZIGZAG_PATTERN']:
+        predicted_size = last_size if color_flip_hist_action == "Same" else ("Small" if last_size == "Big" else "Big")
         confidence = 94
-        used_rule = "ZIGZAG_PATTERN"
-        status = "पैटर्न क्रैक: स्पष्ट जिग-जैग पैटर्न है, अगला साइज उलटा होगा।"
+        used_rule = "SMART_COLOR_FLIP"
+        status = f"स्मार्ट क्रैक: कलर बदला है! इतिहास बताता है कि इस स्थिति में साइज '{color_flip_hist_action}' रहता है।"
     
-    # कलर फ्लिप नियम
-    elif color_flipped and weights['COLOR_FLIP'] > weights['ZERO_FIVE_RULE']:
+    # जिग-जैग
+    elif is_zigzag and weights['ZIGZAG_PATTERN'] > weights['ZERO_FIVE_RULE']:
         predicted_size = "Small" if last_size == "Big" else "Big"
         confidence = 93
-        used_rule = "COLOR_FLIP"
-        status = "नियम पालन: बेस कलर बदला है, इसलिए साइज को रिवर्स किया गया है।"
+        used_rule = "ZIGZAG_PATTERN"
+        status = "पैटर्न क्रैक: जिग-जैग चल रहा है, अगला साइज रिवर्स होगा।"
     
     # 0 या 5 का नियम
-    elif is_zero_five and weights['ZERO_FIVE_RULE'] > 10.0:
-        # ऐतिहासिक डेटा के आधार पर 0 या 5 के बाद क्या आता है (डिफ़ॉल्ट: 0 के बाद 0/Small, 5 के बाद 5/Big)
+    elif last_num in [0, 5] and weights['ZERO_FIVE_RULE'] > 10.0:
         predicted_size = "Small" if last_num == 0 else "Big"
-        confidence = 92
+        confidence = 91
         used_rule = "ZERO_FIVE_RULE"
-        status = f"नियम पालन: टर्निंग पॉइंट {last_num} डिटेक्ट हुआ है।"
+        status = f"टर्निंग पॉइंट: {last_num} के बाद ऐतिहासिक नियम लागू किया गया है।"
     
-    # कोई स्पष्ट पैटर्न नहीं, तो ऐतिहासिक फ्रिक्वेंसी फॉलो करें
     else:
-        big_c = recent_sizes.count('Big')
-        small_c = recent_sizes.count('Small')
-        predicted_size = "Big" if big_c >= small_c else "Small"
-        used_rule = "PROBABILITY_FLOW"
-        status = "साइलेंट मूवमेंट: ऐतिहासिक फ्रिक्वेंसी और शांतिपूर्ण फ्लो।"
+        predicted_size = last_size
+        status = "कंटिन्यूएशन: मौजूदा फ्लो को बनाए रखा गया है।"
 
-    # सटीक नंबर का चयन (उसी साइज के सबसे संभावित नंबर)
+    # सटीक नंबर का चयन
     candidate_nums = [n for n in recent_nums if get_number_details(n)[0] == predicted_size]
     if candidate_nums:
         predicted_num = max(set(candidate_nums), key=candidate_nums.count)
@@ -168,13 +194,12 @@ def advanced_pro_engine(history_data, weights):
     predicted_color = get_number_details(predicted_num)[1]
     return predicted_size, predicted_num, predicted_color, confidence, used_rule, status
 
-# 8 लेवल बेट राशि
 current_bet_amt = st.session_state.base_bet * (2 ** (st.session_state.level - 1))
 
 # ==========================================
 # 🖥️ UI और डैशबोर्ड
 # ==========================================
-st.title("🎯 Pro Master AI - Silent Movement Edition")
+st.title("🎯 Pro Master AI - Smart History & Repeat Edition")
 
 col_left, col_right = st.columns([1.1, 1])
 
@@ -183,7 +208,7 @@ with col_left:
     st.markdown("### 🤖 एआई लाइव प्रिडिक्शन")
     
     if len(st.session_state.history) >= 2:
-        p_size, p_num, p_color, p_conf, p_rule, p_stat = advanced_pro_engine(
+        p_size, p_num, p_color, p_conf, p_rule, p_stat = smart_history_engine(
             st.session_state.history, st.session_state.rule_weights
         )
         st.session_state.last_pred_size = p_size
@@ -195,7 +220,7 @@ with col_left:
         
         st.markdown(f"""
             <div style="background: linear-gradient(135deg, #1f4068, #162447); padding: 18px; border-radius: 12px; border: 3px solid {box_color}; text-align: center;">
-                <h3 style="margin:0; color:#66fcf1; font-size:18px;">एआई की साइलेंट चाल</h3>
+                <h3 style="margin:0; color:#66fcf1; font-size:18px;">एआई की स्मार्ट चाल</h3>
                 <h1 style="font-size: 42px; margin: 8px 0; color: #ffffff;">{p_size} &nbsp;|&nbsp; #{p_num}</h1>
                 <h3 style="margin:0; color: #ffcc00;">रंग: {p_color}</h3>
                 <h4 style="margin-top: 8px; color: #ff6584;">लेवल {st.session_state.level}/8 बेट: ₹ {current_bet_amt}</h4>
@@ -211,13 +236,30 @@ with col_left:
     st.markdown("### 💬 एआई मेंटोर फीडबैक")
     st.info(st.session_state.last_commentary)
 
-    with st.expander("🧠 एआई सेल्फ-लर्निंग वेट्स (लाइव अपडेट्स)"):
+    with st.expander("🧠 एआई लर्निंग वेट्स (लाइव अपडेट्स)"):
         for r_key, r_val in st.session_state.rule_weights.items():
             st.write(f"**{r_key}**: {r_val:.1f}")
 
+    # जावास्क्रिप्ट स्पीच/साउंड
+    js_code = ""
+    if enable_sound and st.session_state.sound_trigger:
+        if st.session_state.sound_trigger == 'win':
+            js_code += "try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.type = 'triangle'; osc.frequency.setValueAtTime(523.25, ctx.currentTime); osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1); gain.gain.setValueAtTime(0.2, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.5); } catch(e) {}"
+        elif st.session_state.sound_trigger == 'loss':
+            js_code += "try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.type = 'sawtooth'; osc.frequency.setValueAtTime(220, ctx.currentTime); osc.frequency.setValueAtTime(185, ctx.currentTime + 0.15); gain.gain.setValueAtTime(0.2, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.4); } catch(e) {}"
+        st.session_state.sound_trigger = None
+
+    if enable_voice and st.session_state.speak_text:
+        clean_text = st.session_state.speak_text.replace("'", "").replace('"', "")
+        js_code += f"if ('speechSynthesis' in window) {{ window.speechSynthesis.cancel(); var msg = new SpeechSynthesisUtterance('{clean_text}'); msg.lang = 'hi-IN'; msg.rate = 0.95; window.speechSynthesis.speak(msg); }}"
+        st.session_state.speak_text = ""
+
+    if js_code:
+        st.components.v1.html(f"<script>{js_code}</script>", height=0)
+
 # --- दायां हिस्सा: इनपुट और फीडबैक ---
 with col_right:
-    st.markdown("### 📥 बल्क डेटा लोड (ऑप्शनल)")
+    st.markdown("### 📥 ऐतिहासिक डेटा दर्ज करें")
     batch_input = st.text_area("पिछले नंबर कॉमा से डालें (जैसे: 5,8,7,2):", height=70)
     if st.button("🚀 डेटा प्रोसेस करें"):
         try:
@@ -233,14 +275,13 @@ with col_right:
             st.error("❌ गलत फॉर्मेट।")
 
     st.markdown("---")
-    st.markdown("### 🔄 वास्तविक रिजल्ट दर्ज करें (सेल्फ-लर्निंग लूप)")
+    st.markdown("### 🔄 वास्तविक रिजल्ट दर्ज करें (सेल्फ-लर्निंग)")
     
-    # कन्फर्मेशन अलर्ट
     if st.session_state.success_alert:
         st.success(st.session_state.success_alert)
         st.session_state.success_alert = ""
 
-    live_num = st.number_input("आया हुआ नया नंबर दर्ज करें (0-9)", min_value=0, max_value=9, value=0)
+    live_num = st.number_input("नया आया हुआ नंबर (0-9)", min_value=0, max_value=9, value=0)
     
     if st.button("✨ नंबर सबमिट करें"):
         act_size, act_color = get_number_details(live_num)
@@ -250,24 +291,25 @@ with col_right:
             used_rule = st.session_state.active_rule
             
             if act_size == st.session_state.last_pred_size:
-                # WIN - एआई उसी नियम का स्कोर बढ़ाएगा जिसने जिताया
                 st.session_state.correct_preds += 1
                 st.session_state.total_pnl += current_bet_amt * 0.95
                 st.session_state.rule_weights[used_rule] = min(50.0, st.session_state.rule_weights[used_rule] + 2.0)
                 
-                st.session_state.last_commentary = f"🎯 शानदार! {used_rule} नियम सफल रहा। एआई ने इस नियम को रिवॉर्ड दिया है। लेवल 1 पर रीसेट।"
+                st.session_state.last_commentary = f"🎯 शानदार! {used_rule} नियम सफल रहा। लेवल 1 पर रीसेट।"
+                st.session_state.speak_text = "शानदार विन"
                 st.session_state.level = 1
+                st.session_state.sound_trigger = 'win'
             else:
-                # LOSS - एआई अपनी गलती मानेगा और उस नियम का स्कोर घटाएगा
                 st.session_state.total_pnl -= current_bet_amt
                 st.session_state.rule_weights[used_rule] = max(5.0, st.session_state.rule_weights[used_rule] - 2.0)
                 
                 st.session_state.level += 1
+                st.session_state.sound_trigger = 'loss'
                 if st.session_state.level > 8:
                     st.session_state.level = 1
-                    st.session_state.last_commentary = "⚠️ 8 लेवल पूरे हुए। सुरक्षा के लिए लेवल 1 पर वापस।"
+                    st.session_state.last_commentary = "⚠️ 8 लेवल पूरे हुए। लेवल 1 पर वापस।"
                 else:
-                    st.session_state.last_commentary = f"📉 {used_rule} नियम फेल हुआ। एआई ने इस नियम का पावर कम कर दिया है और लेवल {st.session_state.level} पर नई रणनीति अपनाएगा।"
+                    st.session_state.last_commentary = f"📉 {used_rule} नियम फेल हुआ। एआई ने रणनीति बदल ली है।"
         else:
             st.session_state.last_commentary = "पहला परिणाम दर्ज हो गया है।"
 
@@ -275,7 +317,6 @@ with col_right:
         if len(st.session_state.history) > 60:
             st.session_state.history.pop(0)
 
-        # स्क्रीन पर तत्काल सफलता का संदेश
         st.session_state.success_alert = f"✅ कन्फर्म: नंबर #{live_num} ({act_size} / {act_color}) दर्ज हो गया है!"
         st.rerun()
 
@@ -294,6 +335,6 @@ with col_right:
         st.session_state.history = []
         st.session_state.level = 1
         st.session_state.total_pnl = 0.0
-        st.session_state.rule_weights = {'STREAK_FOLLOWER': 30.0, 'ZIGZAG_PATTERN': 25.0, 'COLOR_FLIP': 20.0, 'ZERO_FIVE_RULE': 15.0, 'PROBABILITY_FLOW': 10.0}
+        st.session_state.rule_weights = {'NUMBER_REPEAT': 32.0, 'STREAK_FOLLOWER': 28.0, 'SMART_COLOR_FLIP': 22.0, 'ZIGZAG_PATTERN': 18.0, 'ZERO_FIVE_RULE': 15.0}
         st.session_state.success_alert = "इंजन सफलतापूर्वक रीसेट हो गया है।"
         st.rerun()
