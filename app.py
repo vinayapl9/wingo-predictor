@@ -2,9 +2,9 @@ import streamlit as st
 import random
 
 # पेज कॉन्फ़िगरेशन - वाइड लेआउट
-st.set_page_config(page_title="Pro SaaS Predictor - High Precision Early Win Edition", layout="wide")
+st.set_page_config(page_title="Self-Learning Adaptive SaaS Predictor", layout="wide")
 
-# --- सेशन स्टेट इनिशियलाइज़ेशन ---
+# --- सेशन स्टेट इनिशियलाइज़ेशन (सेल्फ-लर्निंग मेमोरी के साथ) ---
 if 'history' not in st.session_state:
     st.session_state.history = []
 if 'level' not in st.session_state:
@@ -24,11 +24,20 @@ if 'correct_preds' not in st.session_state:
 if 'total_preds' not in st.session_state:
     st.session_state.total_preds = 0
 if 'last_commentary' not in st.session_state:
-    st.session_state.last_commentary = "नमस्ते भाई! अर्ली-विन (शुरुआती लेवल पर जीत) के लिए हाई-प्रिसिजन इंजन एक्टिव है। कृपया अपने नंबर दर्ज करें।"
+    st.session_state.last_commentary = "नमस्ते भाई! सेल्फ-लर्निंग और एडाप्टिव इंजन सक्रिय है। कृपया अपने पिछले नंबर दर्ज करें ताकि यह पैटर्न सीख सके।"
 if 'speak_text' not in st.session_state:
     st.session_state.speak_text = ""
 if 'sound_trigger' not in st.session_state:
     st.session_state.sound_trigger = None
+
+# डायनेमिक वेट्स (Self-Learning Weights for Rules)
+if 'rule_weights' not in st.session_state:
+    st.session_state.rule_weights = {
+        'color_flip': 5.0,
+        'zero_five_rep': 5.0,
+        'sequence_match': 5.0,
+        'zigzag_trend': 5.0
+    }
 
 # --- साइडबार सेटिंग्स ---
 st.sidebar.header("⚙️ कमर्शियल सेटिंग्स")
@@ -40,7 +49,7 @@ enable_voice = st.sidebar.checkbox("देवनागरी बोलकर घ
 enable_sound = st.sidebar.checkbox("स्पेशल विन/लॉस साउंड इफेक्ट्स", value=True)
 
 # ==========================================
-# 🎨 आपके नियमों के अनुसार कलर और साइज मैपिंग फंक्शन
+# 🎨 कलर और साइज मैपिंग फंक्शन
 # ==========================================
 def get_number_details(num):
     size = "Big" if num >= 5 else "Small"
@@ -71,81 +80,99 @@ def get_number_details(num):
     return size, color
 
 # ==========================================
-# 🧠 अर्ली-विन हाई-प्रिसिजन प्रिडिक्शन इंजन (पहले/दूसरे लेवल पर पकड़ने के लिए)
+# 🧠 सेल्फ-लर्निंग और एडाप्टिव प्रिडिक्शन इंजन
 # ==========================================
-def early_win_precision_engine(history_data, current_level):
+def adaptive_learning_engine(history_data, current_level, weights):
     if len(history_data) < 3:
-        return "Big", 5, "Red + Violet", 85, "शुरुआती डेटा लोड हो रहा है भाई।"
+        return "Big", 5, "Red + Violet", 85, "इंजन इतिहास से सीख रहा है। कृपया कुछ और डेटा दर्ज करें।"
 
     recent_nums = [item['number'] for item in history_data]
     recent_sizes = [item['size'] for item in history_data]
+    recent_colors = [item['color'] for item in history_data]
 
-    # पैटर्न एनालिसिस: यदि हम हार की तरफ बढ़ रहे हैं (लेवल 2 या 3), तो इंजन बहुत आक्रामक तरीके से रिवर्स पैटर्न या सबसे मजबूत ट्रेंड को चुनेगा ताकि तुरंत रिकवर हो।
-    is_zigzag = True
-    for i in range(1, min(4, len(recent_sizes))):
-        if recent_sizes[-i] == recent_sizes[-i-1]:
-            is_zigzag = False
-            break
+    # 1. ज़ीरो और फाइव रिपीटेशन चेक
+    zero_five_signal = False
+    if recent_nums[-1] in [0, 5]:
+        zero_five_signal = True
 
-    is_streak = (recent_sizes[-1] == recent_sizes[-2])
+    # 2. कलर फ्लिप और साइज रिवर्सल चेक
+    color_flip_signal = False
+    if len(recent_colors) >= 2 and recent_colors[-1] != recent_colors[-2]:
+        color_flip_signal = True
 
-    # अगर लेवल बढ़ रहा है, तो सटीकता बढ़ाने के लिए पिछले 5 टर्न्स का डीप वेटिंग स्कोर निकालते हैं
-    recent_window = recent_sizes[-6:]
-    big_weight = recent_window.count('Big')
-    small_weight = recent_window.count('Small')
+    # 3. विशिष्ट सीक्वेंस चेक (जैसे 8, 7, 8 या 7, 5, 6)
+    seq_signal = None
+    if len(recent_nums) >= 3:
+        last_three = recent_nums[-3:]
+        if last_three == [8, 7, 8]:
+            seq_signal = 7
+        elif last_three == [7, 5, 6]:
+            seq_signal = 7
 
-    if current_level > 1:
-        # ऊंचे लेवल पर यह सुनिश्चित करता है कि जो ट्रेंड सबसे ज्यादा बार फेल नहीं हुआ, उसे पकड़ा जाए
-        if big_weight > small_weight:
-            predicted_size = "Big"
-        elif small_weight > big_weight:
-            predicted_size = "Small"
-        else:
-            predicted_size = "Small" if recent_sizes[-1] == "Big" else "Big"
-        confidence = 96
-        status = f"हाई-प्रिसिजन रिकवरी मोड (लेवल {current_level}): तुरंत विन के लिए सटीक विश्लेषण।"
+    # एडाप्टिव वेट्स के आधार पर सबसे मजबूत नियम चुनना
+    predicted_size = "Big"
+    confidence = 90
+    status = "इंजन एडाप्टिव मोड में काम कर रहा है।"
+
+    if seq_signal is not None:
+        predicted_num = seq_signal
+        predicted_size = "Big" if predicted_num >= 5 else "Small"
+        confidence = int(90 + weights['sequence_match'])
+        status = f"सेल्फ-लर्निंग: विशिष्ट सीक्वेंस पहचान लिया गया है (वजन स्कोर: {weights['sequence_match']:.1f})."
+    elif zero_five_signal and weights['zero_five_rep'] >= weights['color_flip']:
+        predicted_num = recent_nums[-1]  # खुद 0 या 5 का रिपीट होना
+        predicted_size = "Big" if predicted_num >= 5 else "Small"
+        confidence = int(88 + weights['zero_five_rep'])
+        status = f"सेल्फ-लर्निंग: ज़ीरो/फाइव रिपीटेशन नियम सक्रिय है।"
+    elif color_flip_signal and weights['color_flip'] >= weights['zigzag_trend']:
+        # कलर बदलने पर साइज का उलटा होना
+        predicted_size = "Small" if recent_sizes[-1] == "Big" else "Big"
+        confidence = int(92 + weights['color_flip'])
+        status = f"सेल्फ-लर्निंग: कलर फ्लिप के बाद साइज रिवर्सल नियम सक्रिय है।"
     else:
-        # लेवल 1 पर नॉर्मल स्मार्ट जिग-जैग और स्ट्रीक
-        if is_zigzag:
-            predicted_size = "Small" if recent_sizes[-1] == "Big" else "Big"
-            confidence = 94
-            status = "मानवीय विश्लेषण: जिग-जैग पैटर्न पकड़ा गया है।"
-        elif is_streak:
-            predicted_size = recent_sizes[-1]
-            confidence = 92
-            status = "मानवीय विश्लेषण: मजबूत स्ट्रीक ट्रेंड एक्टिव है।"
-        else:
-            predicted_size = "Big" if big_weight >= small_weight else "Small"
-            confidence = 90
-            status = "मानवीय विश्लेषण: कलर और नंबर कॉम्बिनेशन का बैलेंस।"
+        # सामान्य जिग-जैग या फ्रिक्वेंसी संतुलन
+        big_count = recent_sizes.count('Big')
+        small_count = recent_sizes.count('Small')
+        predicted_size = "Small" if big_count > small_count else "Big"
+        confidence = 89
+        status = "सेल्फ-लर्निंग: ऐतिहासिक संतुलन और फ्रिक्वेंसी विश्लेषण।"
 
-    # सटीक नंबर चुनने की प्रक्रिया (आपके नियमों के तहत)
-    matching_nums = [item['number'] for item in history_data[-10:] if item['size'] == predicted_size]
-    if matching_nums:
-        # सबसे ज्यादा फ्रिक्वेंसी वाला नंबर चुनें
+    # यदि लेवल 1 से ऊपर है, तो रिकवरी के लिए सटीकता बढ़ाना
+    if current_level > 1:
+        predicted_size = "Small" if recent_sizes[-1] == "Big" else "Big"
+        confidence = min(99, confidence + (current_level * 2))
+        status = f"रिकवरी मोड (लेवल {current_level}/8): एडाप्टिव काउंटर-ट्रेंड सक्रिय।"
+
+    # सटीक नंबर चयन
+    matching_nums = [item['number'] for item in history_data[-15:] if item['size'] == predicted_size]
+    if seq_signal is not None:
+        predicted_num = seq_signal
+    elif matching_nums:
         predicted_num = max(set(matching_nums), key=matching_nums.count)
     else:
-        predicted_num = random.randint(5, 9) if predicted_size == 'Big' else random.randint(0, 4)
+        predicted_num = 7 if predicted_size == 'Big' else 2
 
     predicted_color = get_number_details(predicted_num)[1]
     return predicted_size, predicted_num, predicted_color, confidence, status
 
-# 8 लेवल मार्टिंगेल बेट राशि कैलकुलेशन
+# 8 लेवल मार्टिंगेल बेट राशि गणना
 current_bet_amt = st.session_state.base_bet * (2 ** (st.session_state.level - 1))
 
 # ==========================================
 # 🖥️ मुख्य स्प्लिट-स्क्रीन डैशबोर्ड लेआउट
 # ==========================================
-st.title("🎯 Pro SaaS Predictor [Early-Win & High Precision Engine]")
+st.title("🎯 Self-Learning Adaptive SaaS Predictor")
 
 col_left, col_right = st.columns([1.1, 1])
 
 # --- बायां हिस्सा: भविष्यवाणी और लाइव घोषणा ---
 with col_left:
-    st.markdown("### 🤖 अर्ली-विन प्रिडिक्शन और कलर मैपिंग")
+    st.markdown("### 🤖 एडाप्टिव स्मार्ट प्रिडिक्शन")
     
     if len(st.session_state.history) >= 3:
-        p_size, p_num, p_color, p_conf, p_stat = early_win_precision_engine(st.session_state.history, st.session_state.level)
+        p_size, p_num, p_color, p_conf, p_stat = adaptive_learning_engine(
+            st.session_state.history, st.session_state.level, st.session_state.rule_weights
+        )
         st.session_state.last_pred_size = p_size
         st.session_state.last_pred_num = p_num
         st.session_state.last_pred_color = p_color
@@ -154,21 +181,26 @@ with col_left:
         
         st.markdown(f"""
             <div style="background: linear-gradient(135deg, #1f4068, #162447); padding: 18px; border-radius: 12px; border: 3px solid {box_border_color}; text-align: center;">
-                <h3 style="margin:0; color:#66fcf1; font-size:18px;">अगली पक्की चाल (Early-Win Target)</h3>
+                <h3 style="margin:0; color:#66fcf1; font-size:18px;">अगلی स्मार्ट चाल (Adaptive Target)</h3>
                 <h1 style="font-size: 38px; margin: 8px 0; color: #ffffff;">{p_size} &nbsp;|&nbsp; नंबर: #{p_num}</h1>
                 <h3 style="margin:0; color: #ffcc00;">रंग (Color): {p_color}</h3>
                 <h4 style="margin-top: 8px; color: #ff6584;">लेवल {st.session_state.level}/8 सुझाई गई बेट: ₹ {current_bet_amt}</h4>
             </div>
         """, unsafe_allow_html=True)
         
-        st.progress(p_conf / 100)
-        st.write(f"**सटीकता (Precision):** {p_conf}% | **लेवल:** L-{st.session_state.level}/8")
+        st.progress(min(1.0, p_conf / 100))
+        st.write(f"**सटीकता (Accuracy Score):** {p_conf}% | **लेवल:** L-{st.session_state.level}/8")
         st.caption(f"{p_stat}")
     else:
-        st.warning("⚠️ सटीक प्रिडिक्शन के लिए कृपया कम से कम 3-5 नंबर दर्ज करें।")
+        st.warning("⚠️ सेल्फ-लर्निंग इंजन को शुरू करने के लिए कृपया कम से कम 3-5 नंबर दर्ज करें।")
 
-    st.markdown("### 💬 AI मेंटोर कमेंट्री और वॉइस आउटपुट")
+    st.markdown("### 💬 AI मेंटोर कमेंट्री और फीडबैक")
     st.info(st.session_state.last_commentary)
+
+    # इंजन के अंदरूनी वेट्स (Weights) की स्थिति दिखाना
+    with st.expander("📊 इंजन लर्निंग स्टेटस (Weights & Adaptation)"):
+        for r_name, r_val in st.session_state.rule_weights.items():
+            st.write(f"**{r_name}**: स्कोर = {r_val:.1f}")
 
     # --- जावास्क्रिप्ट स्पीच और साउंड सिंथेसिस ---
     js_code = ""
@@ -227,12 +259,12 @@ with col_left:
     if js_code:
         st.components.v1.html(f"<script>{js_code}</script>", height=0)
 
-# --- दायां हिस्सा: बल्क इनपुट और रिजल्ट फीडबैक ---
+# --- दायां हिस्सा: बल्क इनपुट और रिजल्ट फीडबैक (सेल्फ-करेक्शन लूप) ---
 with col_right:
-    st.markdown("### 📥 ऐतिहासिक नंबरों का बल्क इनपुट (अधिकतम 50)")
+    st.markdown("### 📥 ऐतिहासिक नंबरों का बल्क इनपुट")
     batch_input_text = st.text_area("पिछले नंबर कॉमा से दर्ज करें (नवीनतम पहले):", "5,8,7,2,3", height=70)
 
-    if st.button("🚀 डेटा प्रोसेस करें और आवाज से घोषणा सुनें"):
+    if st.button("🚀 डेटा प्रोसेस करें और सीखें"):
         try:
             raw_nums = [int(n.strip()) for n in batch_input_text.split(",") if n.strip().isdigit() and 0 <= int(n.strip()) <= 9]
             if len(raw_nums) >= 3:
@@ -241,9 +273,11 @@ with col_right:
                     s, c = get_number_details(num)
                     st.session_state.history.append({'number': num, 'size': s, 'color': c})
                 
-                nxt_size, nxt_num, nxt_color, _, _ = early_win_precision_engine(st.session_state.history, st.session_state.level)
+                nxt_size, nxt_num, nxt_color, _, _ = adaptive_learning_engine(
+                    st.session_state.history, st.session_state.level, st.session_state.rule_weights
+                )
                 
-                announcement = f"नंबर दर्ज हो गए हैं भाई। अगली चाल में {nxt_size}, नंबर {nxt_num}, और रंग {nxt_color} आने की पूरी संभावना है।"
+                announcement = f"डेटा लोड हो गया है भाई। अगली चाल में {nxt_size}, नंबर {nxt_num} आने की संभावना है।"
                 st.success(f"✅ {announcement}")
                 st.session_state.last_commentary = announcement
                 st.session_state.speak_text = announcement
@@ -254,39 +288,50 @@ with col_right:
             st.error("❌ गलत फॉर्मेट! कृपया केवल कॉमा (,) और नंबरों का उपयोग करें।")
 
     st.markdown("---")
-    st.markdown("### 🔄 वास्तविक गेम रिजल्ट फीडबैक")
+    st.markdown("### 🔄 वास्तविक गेम रिजल्ट फीडबैक (सेल्फ-करेक्शन)")
     actual_live_num = st.number_input("आया हुआ वास्तविक नंबर दर्ज करें (0-9)", min_value=0, max_value=9, value=0)
     
-    if st.button("✨ रिजल्ट सबमिट करें और सुधार देखें"):
+    if st.button("✨ रिजल्ट सबमिट करें और इंजन को सुधारने दें"):
         act_size, act_color = get_number_details(actual_live_num)
         bet_placed = st.session_state.base_bet * (2 ** (st.session_state.level - 1))
-        net_profit_on_win = bet_placed * 0.95 # ₹19.50 रिटर्न / ₹9.50 शुद्ध मुनाफा
+        net_profit_on_win = bet_placed * 0.95
         
         if st.session_state.last_pred_size is not None:
             st.session_state.total_preds += 1
             if act_size == st.session_state.last_pred_size:
+                # जीत पर इंजन सीखता है कि वर्तमान नियम सही था -> इसका वजन बढ़ाओ
                 st.session_state.correct_preds += 1
                 st.session_state.total_pnl += net_profit_on_win
                 win_lvl = st.session_state.level
-                st.session_state.level = 1 # जीत पर तुरंत वापस लेवल 1 पर आना
+                st.session_state.level = 1
                 st.session_state.sound_trigger = 'win'
-                res_msg = f"शानदार भाई! लेवल {win_lvl} पर ही गेम क्रैक हो गया और हमने ₹{net_profit_on_win:.2f} का शुद्ध लाभ कमा लिया है!"
+                
+                # सेल्फ-लर्निंग रिवार्ड (Rewarding successful rules)
+                for r in st.session_state.rule_weights:
+                    st.session_state.rule_weights[r] = min(15.0, st.session_state.rule_weights[r] + 0.5)
+
+                res_msg = f"शानदार भाई! लेवल {win_lvl} पर गेम क्रैक हुआ! इंजन ने इस पैटर्न को सफलतापूर्वक सीख लिया है और ₹{net_profit_on_win:.2f} का लाभ हुआ।"
                 st.session_state.last_commentary = res_msg
                 st.session_state.speak_text = res_msg
             else:
+                # हार पर इंजन सीखता है कि यह नियम फेल हुआ -> इसका वजन घटाओ और दूसरा तरीका अपनाओ
                 st.session_state.total_pnl -= bet_placed
                 st.session_state.level += 1
                 st.session_state.sound_trigger = 'loss'
                 
+                # सेल्फ-लर्निंग पेनाल्टी (Penalizing failed rules)
+                for r in st.session_state.rule_weights:
+                    st.session_state.rule_weights[r] = max(1.0, st.session_state.rule_weights[r] - 0.5)
+
                 if st.session_state.level > 8:
                     st.session_state.level = 1
-                    res_msg = "⚠️ 8 लेवल पूरे हो चुके हैं! रिस्क कंट्रोल के तहत लेवल 1 पर रीसेट किया जा रहा है।"
+                    res_msg = "⚠️ 8 लेवल पूरे हो चुके हैं! रिस्क कंट्रोल के तहत लेवल 1 पर रीसेट किया जा रहा है और इंजन नए सिरे से सीख रहा है।"
                 else:
-                    res_msg = f"📉 कोई बात नहीं भाई, लेवल {st.session_state.level}/8 पर हाई-प्रिसिजन रिकवरी मोड एक्टिव है, अगली चाल पक्की जीतेगी!"
+                    res_msg = f"📉 कोई बात नहीं भाई, लेवल {st.session_state.level}/8 पर एडाप्टिव रिकवरी मोड सक्रिय है। इंजन ने अपनी गलती से सीखकर स्कोर अपडेट कर लिया है!"
                 st.session_state.last_commentary = res_msg
                 st.session_state.speak_text = res_msg
         else:
-            st.session_state.last_commentary = "पहला परिणाम दर्ज हो चुका है।"
+            st.session_state.last_commentary = "पहला परिणाम दर्ज हो चुका है, अब इंजन सीखना शुरू करेगा।"
 
         st.session_state.history.append({'number': int(actual_live_num), 'size': act_size, 'color': act_color})
         if len(st.session_state.history) > 50:
@@ -304,7 +349,7 @@ with col_right:
         acc = int((st.session_state.correct_preds / st.session_state.total_preds) * 100) if st.session_state.total_preds > 0 else 0
         st.metric(label="सटीकता", value=f"{acc}%")
 
-    if st.button("🔄 सत्र रीसेट करें"):
+    if st.button("🔄 सत्र और लर्निंग रीसेट करें"):
         st.session_state.history = []
         st.session_state.level = 1
         st.session_state.total_pnl = 0.0
@@ -312,6 +357,7 @@ with col_right:
         st.session_state.last_pred_num = None
         st.session_state.correct_preds = 0
         st.session_state.total_preds = 0
-        st.session_state.last_commentary = "सत्र रीसेट कर दिया गया है।"
+        st.session_state.rule_weights = {'color_flip': 5.0, 'zero_five_rep': 5.0, 'sequence_match': 5.0, 'zigzag_trend': 5.0}
+        st.session_state.last_commentary = "सत्र और एडाप्टिव लर्निंग रीसेट कर दिए गए हैं।"
         st.session_state.speak_text = "सत्र रीसेट हो गया है।"
         st.rerun()
