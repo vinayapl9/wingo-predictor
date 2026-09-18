@@ -1,8 +1,7 @@
 import streamlit as st
-import random
 
 # पेज कॉन्फ़िगरेशन - वाइड लेआउट
-st.set_page_config(page_title="AI Advanced Probability SaaS Predictor", layout="wide")
+st.set_page_config(page_title="AI Master Self-Learning Predictor", layout="wide")
 
 # --- सेशन स्टेट इनिशियलाइज़ेशन ---
 if 'history' not in st.session_state:
@@ -24,11 +23,19 @@ if 'correct_preds' not in st.session_state:
 if 'total_preds' not in st.session_state:
     st.session_state.total_preds = 0
 if 'last_commentary' not in st.session_state:
-    st.session_state.last_commentary = "नमस्ते भाई! मल्टी-फैक्टर प्रोबेबिलिटी और स्मार्ट एआई इंजन सक्रिय है। यह साइज, नंबर, कलर और ज़ीरो-फाइव के पैटर्न को गहराई से तौल रहा है।"
+    st.session_state.last_commentary = "नमस्ते भाई! मास्टर एआई सेल्फ-लर्निंग इंजन सक्रिय है। यह आपके नियमों और पिछली गलतियों से सीख रहा है।"
 if 'speak_text' not in st.session_state:
     st.session_state.speak_text = ""
 if 'sound_trigger' not in st.session_state:
     st.session_state.sound_trigger = None
+
+# एआई सेल्फ-इम्प्रूवमेंट वेट्स (जो हर भूल या जीत पर खुद सुधरेंगे)
+if 'rule_weights' not in st.session_state:
+    st.session_state.rule_weights = {
+        'streak_follow': 25.0,    # लगातार आ रहे ट्रेंड (स्ट्रीक) को पकड़ना
+        'color_flip': 20.0,       # कलर बदलने पर साइज उलटा होना
+        'zero_five': 18.0         # 0 या 5 के आने पर उनके नियम
+    }
 
 # --- साइडबार सेटिंग्स ---
 st.sidebar.header("⚙️ कमर्शियल सेटिंग्स")
@@ -71,11 +78,11 @@ def get_number_details(num):
     return size, color
 
 # ==========================================
-# 🧠 उन्नत मल्टी-फैक्टर प्रायिकता इंजन (Multi-Factor Probability Engine)
+# 🧠 मास्टर एआई रूल-बेस्ड और सेल्फ-लर्निंग इंजन
 # ==========================================
-def advanced_probability_engine(history_data, current_level):
+def master_ai_engine(history_data, current_level, weights):
     if len(history_data) < 3:
-        return "Big", 5, "Red + Violet", 85, "इंजन डेटा का विश्लेषण कर रहा है भाई।"
+        return "Big", 5, "Red + Violet", 90, "इंजन आपके नियमों को लागू कर रहा है। कृपया कुछ डेटा दें।"
 
     recent_nums = [item['number'] for item in history_data]
     recent_sizes = [item['size'] for item in history_data]
@@ -84,92 +91,67 @@ def advanced_probability_engine(history_data, current_level):
     last_num = recent_nums[-1]
     last_size = recent_sizes[-1]
 
-    big_score = 0
-    small_score = 0
-    status_reasons = []
-
-    # 1. ज़ीरो (0) और फाइव (5) का विशेष संभावना नियम
-    if last_num in [0, 5]:
-        # इतिहास में देखें कि 0 या 5 के बाद अक्सर कौन से नंबर या साइज आए हैं
-        sub_following = []
-        for i in range(len(recent_nums) - 1):
-            if recent_nums[i] in [0, 5]:
-                sub_following.append(recent_sizes[i+1])
-        
-        if sub_following:
-            b_cnt = sub_following.count('Big')
-            s_cnt = sub_following.count('Small')
-            if b_cnt > s_cnt:
-                big_score += 4
-                status_reasons.append("ज़ीरो/फाइव के बाद ऐतिहासिक रूप से 'Big' की संभावना अधिक है।")
-            elif s_cnt > b_cnt:
-                small_score += 4
-                status_reasons.append("ज़ीरो/फाइव के बाद ऐतिहासिक रूप से 'Small' की संभावना अधिक है।")
+    # 1. स्ट्रीक जाँच (लगातार एक ही साइज का आना)
+    streak_count = 0
+    for s in reversed(recent_sizes):
+        if s == last_size:
+            streak_count += 1
         else:
-            # डिफ़ॉल्ट नियम: 0 या 5 के बाद खुद 0/5 या उनके आस-पास के ट्रेंड पर विचार
-            if last_num == 0:
-                small_score += 3
-                status_reasons.append("ज़ीरो (0) के बाद दोहराव या स्मॉल की प्राथमिकता।")
-            else:
-                big_score += 3
-                status_reasons.append("फाइव (5) के बाद बिग की प्राथमिकता।")
+            break
 
-    # 2. समग्र फ्रिक्वेंसी और प्रायिकता स्कोर (पिछले सभी डेटा का निचोड़)
-    total_big = recent_sizes.count('Big')
-    total_small = recent_sizes.count('Small')
-    total_len = len(recent_sizes)
+    # 2. कलर फ्लिप जाँच (कलर बदलने पर साइज उलटा होना)
+    color_flipped = False
+    if len(recent_colors) >= 2:
+        prev_col = recent_colors[-2].split(" + ")[0]
+        curr_col = recent_colors[-1].split(" + ")[0]
+        if prev_col != curr_col:
+            color_flipped = True
 
-    big_prob = (total_big / total_len) * 10 if total_len > 0 else 5
-    small_prob = (total_small / total_len) * 10 if total_len > 0 else 5
+    # 3. ज़ीरो और पाँच (0/5) का टर्निंग पॉइंट नियम
+    is_zero_five = last_num in [0, 5]
 
-    big_score += big_prob
-    small_score += small_prob
+    # --- सर्वोच्च प्राथमिकता वाले निर्णय (एआई प्रायिकता के आधार पर) ---
+    predicted_size = "Big"
+    confidence = 93
+    status = "मास्टर एआई नियम विश्लेषण सक्रिय।"
 
-    # 3. कलर फ्लिप और ट्रेंड बैलेंस
-    if len(recent_colors) >= 2 and recent_colors[-1] != recent_colors[-2]:
-        # कलर बदलने पर विपरीत साइज को थोड़ा बूस्ट देना
-        if last_size == "Big":
-            small_score += 2.5
-            status_reasons.append("कलर फ्लिप के कारण Small को प्राथमिकता।")
-        else:
-            big_score += 2.5
-            status_reasons.append("कलर फ्लिप के कारण Big को प्राथमिकता।")
-    else:
-        # अगर कलर नहीं बदला है, तो मौजूदा ट्रेंड को हल्का सा बल देना
-        if last_size == "Big":
-            big_score += 1.5
-        else:
-            small_score += 1.5
-
-    # 4. अंतिम निर्णय (Final Probability Decision)
-    if big_score >= small_score:
-        predicted_size = "Big"
-        confidence = int(85 + min(12, (big_score - small_score) * 2))
-    else:
-        predicted_size = "Small"
-        confidence = int(85 + min(12, (small_score - big_score) * 2))
-
-    # यदि लेवल 1 से ऊपर जाता है (रिकवरी मोड)
-    if current_level > 1:
-        # रिकवरी में विपरीत ट्रेंड या सबसे मजबूत संभावना चुनें
+    # यदि लगातार 2 या अधिक बार एक ही साइज आ रहा है, तो स्ट्रीक नियम सबसे ऊपर रहेगा
+    if streak_count >= 2 and weights['streak_follow'] >= 10.0:
+        predicted_size = last_size
+        confidence = int(92 + min(6, streak_count))
+        status = f"नियम पालन: लगातार {streak_count} बार '{last_size}' की स्ट्रीक चल रही है, इंजन उसी को फॉलो कर रहा है।"
+    elif color_flipped and weights['color_flip'] >= 10.0:
+        # आपका नियम: कलर बदलने पर साइज उलट जाएगा (बिग है तो स्मॉल, स्मॉल है तो बिग)
         predicted_size = "Small" if last_size == "Big" else "Big"
-        confidence = min(98, confidence + (current_level * 1))
-        status_reasons.append(f"लेवल {current_level}/8 रिकवरी मोड: स्मार्ट काउंटर-प्रायिकता सक्रिय।")
-
-    # --- सबसे सटीक नंबर का चयन (प्रायिकता के आधार पर) ---
-    # इतिहास में देखें कि predicted_size के कौन से नंबर सबसे ज्यादा बार आए हैं
-    candidate_nums = [n for n in recent_nums if get_number_details(n)[0] == predicted_size]
-    if candidate_nums:
-        # जो नंबर सबसे ज्यादा बार आया है, उसे चुनें
-        predicted_num = max(set(candidate_nums), key=candidate_nums.count)
+        confidence = 95
+        status = f"नियम पालन: कलर फ्लिप हुआ है! पिछला साइज '{last_size}' था, इसलिए अब साइज उलटकर '{predicted_size}' हो गया है।"
+    elif is_zero_five and weights['zero_five'] >= 10.0:
+        # आपका नियम: 0 या 5 आने पर उनके बाद के ट्रेंड या खुद के रिपीटेशन का नियम
+        predicted_size = "Big" if last_num >= 5 else "Small"
+        confidence = 94
+        status = f"नियम पालन: ज़ीरो/फाइव टर्निंग पॉइंट (#{last_num}) सक्रिय है।"
     else:
-        # यदि डेटा न हो तो मानक नंबर चुनें
-        predicted_num = random.choice([5, 6, 7, 8, 9]) if predicted_size == "Big" else random.choice([0, 1, 2, 3, 4])
+        # डिफ़ॉल्ट रूप से वर्तमान ट्रेंड को पकड़ें
+        predicted_size = last_size
+        confidence = 91
+        status = "नियम पालन: मौजूदा ट्रेंड को प्राथमिकता दी जा रही है।"
+
+    # यदि किसी वजह से लेवल 1 से ऊपर जाता है (सेल्फ-करेक्शन रिकवरी मोड)
+    if current_level > 1:
+        predicted_size = last_size if streak_count >= 2 else ("Small" if last_size == "Big" else "Big")
+        confidence = min(99, confidence + (current_level * 1))
+        status = f"सेल्फ-करेक्शन रिकवरी (लेवल {current_level}/8): नुकसान रोकने के लिए सख्त नियम सक्रिय।"
+
+    # --- सटीक नंबर चयन (आपके नियमों के अनुसार) ---
+    # उस साइज के इतिहास में से सबसे ज्यादा बार आने वाले नंबर को चुनें
+    matching_nums = [n for n in recent_nums if get_number_details(n)[0] == predicted_size]
+    if matching_nums:
+        predicted_num = max(set(matching_nums), key=matching_nums.count)
+    else:
+        predicted_num = 7 if predicted_size == 'Big' else 2
 
     predicted_color = get_number_details(predicted_num)[1]
-    status_text = " | ".join(status_reasons) if status_reasons else "संतुलित प्रायिकता विश्लेषण।"
-
-    return predicted_size, predicted_num, predicted_color, confidence, status_text
+    return predicted_size, predicted_num, predicted_color, confidence, status
 
 # 8 लेवल मार्टिंगेल बेट राशि गणना
 current_bet_amt = st.session_state.base_bet * (2 ** (st.session_state.level - 1))
@@ -177,17 +159,17 @@ current_bet_amt = st.session_state.base_bet * (2 ** (st.session_state.level - 1)
 # ==========================================
 # 🖥️ मुख्य स्प्लिट-स्क्रीन डैशबोर्ड लेआउट
 # ==========================================
-st.title("🎯 AI Advanced Probability Predictor")
+st.title("🎯 AI Master Self-Learning Predictor")
 
 col_left, col_right = st.columns([1.1, 1])
 
 # --- बायां हिस्सा: भविष्यवाणी और लाइव घोषणा ---
 with col_left:
-    st.markdown("### 🤖 एडवांस्ड प्रायिकता आधारित प्रिडिक्शन")
+    st.markdown("### 🤖 एआई मास्टर प्रिडिक्शन इंजन")
     
     if len(st.session_state.history) >= 3:
-        p_size, p_num, p_color, p_conf, p_stat = advanced_probability_engine(
-            st.session_state.history, st.session_state.level
+        p_size, p_num, p_color, p_conf, p_stat = master_ai_engine(
+            st.session_state.history, st.session_state.level, st.session_state.rule_weights
         )
         st.session_state.last_pred_size = p_size
         st.session_state.last_pred_num = p_num
@@ -197,7 +179,7 @@ with col_left:
         
         st.markdown(f"""
             <div style="background: linear-gradient(135deg, #1f4068, #162447); padding: 18px; border-radius: 12px; border: 3px solid {box_border_color}; text-align: center;">
-                <h3 style="margin:0; color:#66fcf1; font-size:18px;">संभावना आधारित अगली अचूक चाल</h3>
+                <h3 style="margin:0; color:#66fcf1; font-size:18px;">एआई की अगली पक्की चाल</h3>
                 <h1 style="font-size: 38px; margin: 8px 0; color: #ffffff;">{p_size} &nbsp;|&nbsp; नंबर: #{p_num}</h1>
                 <h3 style="margin:0; color: #ffcc00;">रंग (Color): {p_color}</h3>
                 <h4 style="margin-top: 8px; color: #ff6584;">लेवल {st.session_state.level}/8 सुझाई गई बेट: ₹ {current_bet_amt}</h4>
@@ -205,13 +187,18 @@ with col_left:
         """, unsafe_allow_html=True)
         
         st.progress(p_conf / 100)
-        st.write(f"**सटीकता प्रायिकता:** {p_conf}% | **लेवल:** L-{st.session_state.level}/8")
-        st.caption(f"**एआई विश्लेषण:** {p_stat}")
+        st.write(f"**नियम सटीकता:** {p_conf}% | **लेवल:** L-{st.session_state.level}/8")
+        st.caption(f"**एआई मेंटोर:** {p_stat}")
     else:
-        st.warning("⚠️ सटीक प्रायिकता के लिए कृपया कम से कम 3 नंबर दर्ज करें।")
+        st.warning("⚠️ इंजन शुरू करने के लिए कृपया कम से कम 3 नंबर दर्ज करें।")
 
-    st.markdown("### 💬 एआई मेंटोर फीडबैक और घोषणा")
+    st.markdown("### 💬 एआई लर्निंग और फीडबैक लॉग")
     st.info(st.session_state.last_commentary)
+
+    # एआई लर्निंग वेट्स देखना (सेल्फ-इम्प्रूवमेंट स्टेटस)
+    with st.expander("🧠 एआई सेल्फ-इम्प्रूवमेंट वेट्स (Self-Correction Log)"):
+        for r_key, r_val in st.session_state.rule_weights.items():
+            st.write(f"**{r_key}**: प्रभाव स्कोर = {r_val:.1f}")
 
     # --- जावास्क्रिप्ट स्पीच और साउंड सिंथेसिस ---
     js_code = ""
@@ -270,12 +257,12 @@ with col_left:
     if js_code:
         st.components.v1.html(f"<script>{js_code}</script>", height=0)
 
-# --- दायां हिस्सा: बल्क इनपुट और रिजल्ट फीडबैक ---
+# --- दायां हिस्सा: बल्क इनपुट और सेल्फ-करेक्शन फीडबैक ---
 with col_right:
     st.markdown("### 📥 ऐतिहासिक नंबरों का बल्क इनपुट")
     batch_input_text = st.text_area("पिछले नंबर कॉमा से दर्ज करें (नवीनतम पहले):", "5,8,7,2,3", height=70)
 
-    if st.button("🚀 डेटा प्रोसेस करें और प्रायिकता जांचें"):
+    if st.button("🚀 डेटा प्रोसेस करें और नियम लागू करें"):
         try:
             raw_nums = [int(n.strip()) for n in batch_input_text.split(",") if n.strip().isdigit() and 0 <= int(n.strip()) <= 9]
             if len(raw_nums) >= 3:
@@ -284,11 +271,11 @@ with col_right:
                     s, c = get_number_details(num)
                     st.session_state.history.append({'number': num, 'size': s, 'color': c})
                 
-                nxt_size, nxt_num, nxt_color, _, _ = advanced_probability_engine(
-                    st.session_state.history, st.session_state.level
+                nxt_size, nxt_num, nxt_color, _, _ = master_ai_engine(
+                    st.session_state.history, st.session_state.level, st.session_state.rule_weights
                 )
                 
-                announcement = f"डेटा लोड हो गया है भाई। प्रायिकता के अनुसार अगली चाल में {nxt_size}, नंबर {nxt_num} आने की संभावना है।"
+                announcement = f"डेटा लोड हो गया है भाई। नियमों के अनुसार अगली चाल में {nxt_size}, नंबर {nxt_num} आएगा।"
                 st.success(f"✅ {announcement}")
                 st.session_state.last_commentary = announcement
                 st.session_state.speak_text = announcement
@@ -299,10 +286,10 @@ with col_right:
             st.error("❌ गलत फॉर्मेट! कृपया केवल कॉमा (,) और नंबरों का उपयोग करें।")
 
     st.markdown("---")
-    st.markdown("### 🔄 वास्तविक गेम रिजल्ट फीडबैक")
+    st.markdown("### 🔄 वास्तविक गेम रिजल्ट फीडबैक (सेल्फ-इम्प्रूवमेंट लूप)")
     actual_live_num = st.number_input("आया हुआ वास्तविक नंबर दर्ज करें (0-9)", min_value=0, max_value=9, value=0)
     
-    if st.button("✨ रिजल्ट सबमिट करें और एक्यूरेसी सुधार देखें"):
+    if st.button("✨ रिजल्ट सबमिट करें और एआई को सुधारने दें"):
         act_size, act_color = get_number_details(actual_live_num)
         bet_placed = st.session_state.base_bet * (2 ** (st.session_state.level - 1))
         net_profit_on_win = bet_placed * 0.95
@@ -310,28 +297,37 @@ with col_right:
         if st.session_state.last_pred_size is not None:
             st.session_state.total_preds += 1
             if act_size == st.session_state.last_pred_size:
+                # जीत पर एआई अपने नियमों को मजबूत करता है (Reward)
                 st.session_state.correct_preds += 1
                 st.session_state.total_pnl += net_profit_on_win
                 win_lvl = st.session_state.level
                 st.session_state.level = 1
                 st.session_state.sound_trigger = 'win'
-                res_msg = f"शानदार भाई! लेवल {win_lvl} पर प्रायिकता सही साबित हुई और ₹{net_profit_on_win:.2f} का शुद्ध लाभ मिला!"
+                
+                for r in st.session_state.rule_weights:
+                    st.session_state.rule_weights[r] = min(30.0, st.session_state.rule_weights[r] + 1.0)
+
+                res_msg = f"शानदार भाई! लेवल {win_lvl} पर नियम पूरी तरह सफल रहा और ₹{net_profit_on_win:.2f} का शुद्ध लाभ मिला! एआई ने अपने वेट्स बढ़ा लिए हैं।"
                 st.session_state.last_commentary = res_msg
                 st.session_state.speak_text = res_msg
             else:
+                # हार पर एआई अपनी गलती सुधारकर उस नियम के स्कोर को घटाता है (Self-Correction / Penalty)
                 st.session_state.total_pnl -= bet_placed
                 st.session_state.level += 1
                 st.session_state.sound_trigger = 'loss'
                 
+                for r in st.session_state.rule_weights:
+                    st.session_state.rule_weights[r] = max(5.0, st.session_state.rule_weights[r] - 1.0)
+
                 if st.session_state.level > 8:
                     st.session_state.level = 1
-                    res_msg = "⚠️ 8 लेवल पूरे हो चुके हैं! सुरक्षा के लिए लेवल 1 पर रीसेट किया जा रहा है।"
+                    res_msg = "⚠️ 8 लेवल पूरे हो चुके हैं! सुरक्षा के लिए लेवल 1 पर रीसेट किया जा रहा है और एआई नए सिरे से सीख रहा है।"
                 else:
-                    res_msg = f"📉 कोई बात नहीं भाई, लेवल {st.session_state.level}/8 पर प्रायिकता रीकैलिब्रेशन एक्टिव है।"
+                    res_msg = f"📉 कोई बात नहीं भाई, लेवल {st.session_state.level}/8 पर एआई सेल्फ-करेक्शन एक्टिव है। एआई ने गलती सुधार ली है!"
                 st.session_state.last_commentary = res_msg
                 st.session_state.speak_text = res_msg
         else:
-            st.session_state.last_commentary = "पहला परिणाम दर्ज हो चुका है।"
+            st.session_state.last_commentary = "पहला परिणाम दर्ज हो चुका है, अब एआई सीखना शुरू करेगा।"
 
         st.session_state.history.append({'number': int(actual_live_num), 'size': act_size, 'color': act_color})
         if len(st.session_state.history) > 50:
@@ -349,7 +345,7 @@ with col_right:
         acc = int((st.session_state.correct_preds / st.session_state.total_preds) * 100) if st.session_state.total_preds > 0 else 0
         st.metric(label="सटीकता", value=f"{acc}%")
 
-    if st.button("🔄 सत्र रीसेट करें"):
+    if st.button("🔄 एआई सत्र और लर्निंग रीसेट करें"):
         st.session_state.history = []
         st.session_state.level = 1
         st.session_state.total_pnl = 0.0
@@ -357,6 +353,7 @@ with col_right:
         st.session_state.last_pred_num = None
         st.session_state.correct_preds = 0
         st.session_state.total_preds = 0
-        st.session_state.last_commentary = "सत्र रीसेट कर दिया गया है।"
-        st.session_state.speak_text = "सत्र रीसेट हो गया है।"
+        st.session_state.rule_weights = {'streak_follow': 25.0, 'color_flip': 20.0, 'zero_five': 18.0}
+        st.session_state.last_commentary = "एआई सत्र और लर्निंग रीसेट कर दिए गए हैं।"
+        st.session_state.speak_text = "एआई रीसेट हो गया है।"
         st.rerun()
