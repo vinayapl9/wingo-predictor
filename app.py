@@ -2,7 +2,7 @@ import streamlit as st
 import random
 
 # पेज कॉन्फ़िगरेशन
-st.set_page_config(page_title="True AI Self-Learning Predictor", layout="wide")
+st.set_page_config(page_title="Hybrid Smart AI Predictor", layout="wide")
 
 # --- सेशन स्टेट इनिशियलाइज़ेशन ---
 if 'history' not in st.session_state:
@@ -19,8 +19,10 @@ if 'last_pred_num' not in st.session_state:
     st.session_state.last_pred_num = None
 if 'last_pred_color' not in st.session_state:
     st.session_state.last_pred_color = None
-if 'last_all_preds' not in st.session_state:
-    st.session_state.last_all_preds = {}  # बैकग्राउंड में सभी नियमों की प्रिडिक्शन स्टोर करने के लिए
+if 'last_base_thought' not in st.session_state:
+    st.session_state.last_base_thought = None  # एआई की मूल सोच स्टोर करने के लिए
+if 'last_mode_used' not in st.session_state:
+    st.session_state.last_mode_used = None
 if 'active_rule' not in st.session_state:
     st.session_state.active_rule = None
 if 'correct_preds' not in st.session_state:
@@ -28,19 +30,26 @@ if 'correct_preds' not in st.session_state:
 if 'total_preds' not in st.session_state:
     st.session_state.total_preds = 0
 if 'last_commentary' not in st.session_state:
-    st.session_state.last_commentary = "नमस्ते! ट्रू सेल्फ-लर्निंग एआई सक्रिय है। यह हर नियम को ट्रैक करेगा और खुद को सुधारेगा।"
+    st.session_state.last_commentary = "नमस्ते भाई! हाइब्रिड (सीधा + उलटा) डायनेमिक एआई सक्रिय है। यह गेम की चाल के अनुसार खुद को सीधा या उलटा कर लेगा।"
 if 'success_alert' not in st.session_state:
     st.session_state.success_alert = ""
 
-# ट्रू एआई लर्निंग वेट्स (Dynamic Weights)
+# ट्रू एआई लर्निंग वेट्स (नियमों के लिए)
 if 'rule_weights' not in st.session_state:
     st.session_state.rule_weights = {
-        'ZIGZAG_PATTERN': 25.0,     # जिग-जैग (A-B-A-B)
-        'STREAK_FOLLOWER': 25.0,    # लगातार एक ही पैटर्न (A-A-A)
-        'SMART_COLOR_FLIP': 20.0,   # कलर फ्लिप पैटर्न
-        'ZERO_FIVE_RULE': 20.0,     # 0 और 5 का टर्निंग पॉइंट
-        'NUMBER_REPEAT': 20.0,      # नंबर का दोहराव
-        'HISTORICAL_PATTERN': 15.0  # इतिहास से सीखना (डिफ़ॉल्ट)
+        'ZIGZAG_PATTERN': 25.0,     
+        'STREAK_FOLLOWER': 25.0,    
+        'SMART_COLOR_FLIP': 20.0,   
+        'ZERO_FIVE_RULE': 20.0,     
+        'NUMBER_REPEAT': 20.0,      
+        'HISTORICAL_PATTERN': 15.0  
+    }
+
+# हाइब्रिड मोड वेट्स (सीधा चलें या उलटा?)
+if 'mode_weights' not in st.session_state:
+    st.session_state.mode_weights = {
+        'DIRECT': 25.0,
+        'OPPOSITE': 25.0
     }
 
 st.sidebar.header("⚙️ प्रो एआई सेटिंग्स")
@@ -65,11 +74,11 @@ def get_number_details(num):
     return size, color
 
 # ==========================================
-# 🧠 ट्रू रीइन्फोर्समेंट लर्निंग इंजन (True RL Engine)
+# 🧠 हाइब्रिड रीइन्फोर्समेंट लर्निंग इंजन (Direct + Opposite)
 # ==========================================
-def true_ai_engine(history_data, weights):
+def hybrid_ai_engine(history_data, r_weights, m_weights):
     if len(history_data) < 3:
-        return "Big", 5, "Violet + Green", 90, "DATA_GATHERING", "एआई पैटर्न को समझने के लिए डेटा जुटा रहा है।", {}
+        return "Big", 5, "Violet + Green", 90, "DATA_GATHERING", "DIRECT", "Big", "एआई पैटर्न को समझने के लिए डेटा जुटा रहा है।"
 
     recent_nums = [item['number'] for item in history_data]
     recent_sizes = [item['size'] for item in history_data]
@@ -78,22 +87,17 @@ def true_ai_engine(history_data, weights):
     last_size = recent_sizes[-1]
     last_num = recent_nums[-1]
 
-    # --- स्टेप 1: सभी नियमों की स्वतंत्र भविष्यवाणी (Independent Predictions) ---
+    # --- स्टेप 1: सभी नियमों की स्वतंत्र भविष्यवाणी (मूल सोच) ---
     all_rule_preds = {}
 
-    # 1. ZIGZAG_PATTERN: अगर पिछले दो साइज अलग हैं, तो जिग-जैग मानकर अगला साइज पलटेगा
     if recent_sizes[-1] != recent_sizes[-2]:
         all_rule_preds['ZIGZAG_PATTERN'] = "Small" if last_size == "Big" else "Big"
-    
-    # 2. STREAK_FOLLOWER: अगर पिछले दो साइज सेम हैं, तो स्ट्रीक मानकर उसी को दोहराएगा
     if recent_sizes[-1] == recent_sizes[-2]:
         all_rule_preds['STREAK_FOLLOWER'] = last_size
 
-    # 3. SMART_COLOR_FLIP: बेस कलर बदलता है तो
     prev_base = "Red" if "Red" in recent_colors[-2] else "Green"
     curr_base = "Red" if "Red" in recent_colors[-1] else "Green"
     if prev_base != curr_base:
-        # इतिहास देखें कि कलर बदलने पर क्या हुआ था
         hist_action = "Opposite"
         for i in range(len(recent_colors)-2, 0, -1):
             p_c = "Red" if "Red" in recent_colors[i-1] else "Green"
@@ -103,16 +107,14 @@ def true_ai_engine(history_data, weights):
                 break
         all_rule_preds['SMART_COLOR_FLIP'] = last_size if hist_action == "Same" else ("Small" if last_size == "Big" else "Big")
 
-    # 4. ZERO_FIVE_RULE: 0 या 5 आने पर
     if last_num in [0, 5]:
-        hist_05_action = "Small" if last_num == 0 else "Big" # डिफ़ॉल्ट
+        hist_05_action = "Small" if last_num == 0 else "Big"
         for i in range(len(recent_nums)-2, -1, -1):
             if recent_nums[i] == last_num and i+1 < len(recent_sizes):
                 hist_05_action = recent_sizes[i+1]
                 break
         all_rule_preds['ZERO_FIVE_RULE'] = hist_05_action
 
-    # 5. NUMBER_REPEAT: नंबर दोहराने पर
     if len(recent_nums) >= 2 and recent_nums[-1] == recent_nums[-2]:
         hist_rep_action = last_size
         for i in range(len(recent_nums)-2, 0, -1):
@@ -121,7 +123,6 @@ def true_ai_engine(history_data, weights):
                 break
         all_rule_preds['NUMBER_REPEAT'] = hist_rep_action
 
-    # 6. HISTORICAL_PATTERN (मजबूत डिफ़ॉल्ट): पिछले 2 साइज का कॉम्बो इतिहास में क्या लाया?
     if len(recent_sizes) >= 3:
         pattern = recent_sizes[-2:]
         hist_follows = []
@@ -131,28 +132,39 @@ def true_ai_engine(history_data, weights):
         if hist_follows:
             all_rule_preds['HISTORICAL_PATTERN'] = max(set(hist_follows), key=hist_follows.count)
         else:
-            all_rule_preds['HISTORICAL_PATTERN'] = "Small" if last_size == "Big" else "Big" # ब्लाइंड रिपीट रोकने के लिए जिग-जैग बायस
+            all_rule_preds['HISTORICAL_PATTERN'] = "Small" if last_size == "Big" else "Big"
 
-    # --- स्टेप 2: सबसे मजबूत नियम चुनना (Choosing the Best Rule based on Weights) ---
+    # --- स्टेप 2: सबसे मजबूत नियम से 'मूल सोच (Base Thought)' तय करना ---
     best_rule = None
     max_weight = -1
-    predicted_size = "Big"
+    base_ai_thought = "Big"
 
     for rule, pred in all_rule_preds.items():
-        w = weights.get(rule, 0)
+        w = r_weights.get(rule, 0)
         if w > max_weight:
             max_weight = w
             best_rule = rule
-            predicted_size = pred
+            base_ai_thought = pred
 
-    # यदि किसी कारणवश कोई नियम नहीं मिला
     if not best_rule:
         best_rule = "HISTORICAL_PATTERN"
-        predicted_size = "Small" if last_size == "Big" else "Big"
-        all_rule_preds[best_rule] = predicted_size
+        base_ai_thought = "Small" if last_size == "Big" else "Big"
 
-    confidence = int(80 + min(19, max_weight / 2))
-    status = f"एआई ने {best_rule} का उपयोग किया क्योंकि इसका स्कोर ({max_weight:.1f}) सबसे अधिक है।"
+    # ==========================================
+    # 🎯 स्टेप 3: हाइब्रिड डिसीजन (सीधा देना है या उलटा?)
+    # ==========================================
+    if m_weights['OPPOSITE'] > m_weights['DIRECT']:
+        # अगर गेम उल्टा चल रहा है (Opposite Mode)
+        predicted_size = "Small" if base_ai_thought == "Big" else "Big"
+        mode_used = "OPPOSITE"
+        status = f"🔄 रिवर्स हैक लागू: {best_rule} के अनुसार '{base_ai_thought}' था, लेकिन गेम के ट्रैक को देखते हुए '{predicted_size}' दिया गया।"
+    else:
+        # अगर गेम सीधा चल रहा है (Direct Mode)
+        predicted_size = base_ai_thought
+        mode_used = "DIRECT"
+        status = f"✅ सीधा (Direct) फ्लो लागू: {best_rule} के अनुसार '{base_ai_thought}' ही सही चाल है।"
+
+    confidence = int(85 + min(14, max_weight / 2))
 
     # नंबर का चयन
     candidate_nums = [n for n in recent_nums[-20:] if get_number_details(n)[0] == predicted_size]
@@ -163,35 +175,36 @@ def true_ai_engine(history_data, weights):
 
     predicted_color = get_number_details(predicted_num)[1]
     
-    return predicted_size, predicted_num, predicted_color, confidence, best_rule, status, all_rule_preds
+    return predicted_size, predicted_num, predicted_color, confidence, best_rule, mode_used, base_ai_thought, status
 
 current_bet_amt = st.session_state.base_bet * (2 ** (st.session_state.level - 1))
 
 # ==========================================
 # 🖥️ UI और डैशबोर्ड
 # ==========================================
-st.title("🎯 Pro AI Master - True Self-Learning Edition")
+st.title("🎯 Hybrid Smart AI Predictor (Direct + Opposite)")
 
 col_left, col_right = st.columns([1.1, 1])
 
 with col_left:
-    st.markdown("### 🤖 एआई लाइव प्रिडिक्शन")
+    st.markdown("### 🤖 एआई हाइब्रिड प्रिडिक्शन")
     
     if len(st.session_state.history) >= 2:
-        p_size, p_num, p_color, p_conf, p_rule, p_stat, all_preds = true_ai_engine(
-            st.session_state.history, st.session_state.rule_weights
+        p_size, p_num, p_color, p_conf, p_rule, p_mode, p_base, p_stat = hybrid_ai_engine(
+            st.session_state.history, st.session_state.rule_weights, st.session_state.mode_weights
         )
         st.session_state.last_pred_size = p_size
         st.session_state.last_pred_num = p_num
         st.session_state.last_pred_color = p_color
         st.session_state.active_rule = p_rule
-        st.session_state.last_all_preds = all_preds # सभी नियमों का डेटा सेव
+        st.session_state.last_mode_used = p_mode
+        st.session_state.last_base_thought = p_base
         
-        box_color = "#28a745" if "Green" in p_color else "#dc3545" if "Red" in p_color else "#6f42c1"
+        box_color = "#17a2b8" if p_mode == "DIRECT" else "#fd7e14" # सीधा है तो नीला, उलटा है तो नारंगी
         
         st.markdown(f"""
             <div style="background: linear-gradient(135deg, #1f4068, #162447); padding: 18px; border-radius: 12px; border: 3px solid {box_color}; text-align: center;">
-                <h3 style="margin:0; color:#66fcf1; font-size:18px;">एआई की स्मार्ट चाल</h3>
+                <h3 style="margin:0; color:#66fcf1; font-size:18px;">मोड: {p_mode} | नियम: {p_rule}</h3>
                 <h1 style="font-size: 42px; margin: 8px 0; color: #ffffff;">{p_size} &nbsp;|&nbsp; #{p_num}</h1>
                 <h3 style="margin:0; color: #ffcc00;">रंग: {p_color}</h3>
                 <h4 style="margin-top: 8px; color: #ff6584;">लेवल {st.session_state.level}/8 बेट: ₹ {current_bet_amt}</h4>
@@ -199,18 +212,13 @@ with col_left:
         """, unsafe_allow_html=True)
         
         st.progress(p_conf / 100)
-        st.write(f"**सटीकता:** {p_conf}% | **मुख्य नियम:** {p_rule}")
+        st.write(f"**सटीकता:** {p_conf}% | **गेम का ट्रैकर:** DIRECT ({st.session_state.mode_weights['DIRECT']:.1f}) vs OPPOSITE ({st.session_state.mode_weights['OPPOSITE']:.1f})")
         st.caption(f"**एआई लॉजिक:** {p_stat}")
     else:
         st.warning("⚠️ एआई को पैटर्न समझने के लिए कम से कम 2 नंबर दें।")
 
     st.markdown("### 💬 एआई मेंटोर फीडबैक")
     st.info(st.session_state.last_commentary)
-
-    with st.expander("🧠 ट्रू एआई लर्निंग वेट्स (कौन सा नियम कितना मजबूत है)"):
-        sorted_weights = sorted(st.session_state.rule_weights.items(), key=lambda item: item[1], reverse=True)
-        for r_key, r_val in sorted_weights:
-            st.write(f"**{r_key}**: {r_val:.1f}")
 
 with col_right:
     st.markdown("### 📥 ऐतिहासिक डेटा दर्ज करें")
@@ -229,7 +237,7 @@ with col_right:
             st.error("❌ गलत फॉर्मेट।")
 
     st.markdown("---")
-    st.markdown("### 🔄 वास्तविक रिजल्ट दर्ज करें (सच्चा एआई सेल्फ-लर्निंग)")
+    st.markdown("### 🔄 वास्तविक रिजल्ट दर्ज करें (सच्चा हाइब्रिड लर्निंग)")
     
     if st.session_state.success_alert:
         st.success(st.session_state.success_alert)
@@ -243,23 +251,22 @@ with col_right:
         if st.session_state.last_pred_size is not None:
             st.session_state.total_preds += 1
             
-            # --- असली सेल्फ-लर्निंग (यहाँ एआई हर नियम को उसके प्रदर्शन पर इनाम/सजा देता है) ---
-            rules_that_were_right = []
-            for rule, pred_size in st.session_state.last_all_preds.items():
-                if pred_size == act_size:
-                    # जो नियम सही थे (चाहे वे मुख्य नियम न हों), उनका वजन तेजी से बढ़ाएं
-                    st.session_state.rule_weights[rule] = min(60.0, st.session_state.rule_weights[rule] + 2.5)
-                    rules_that_were_right.append(rule)
-                else:
-                    # जो नियम गलत थे, उनका वजन घटाएं
-                    st.session_state.rule_weights[rule] = max(5.0, st.session_state.rule_weights[rule] - 1.5)
+            # --- हाइब्रिड मोड लर्निंग (क्या सीधा जीत रहा है या उलटा?) ---
+            if st.session_state.last_base_thought == act_size:
+                # यानी 'मूल सोच (Direct)' सही थी
+                st.session_state.mode_weights['DIRECT'] = min(60.0, st.session_state.mode_weights['DIRECT'] + 2.0)
+                st.session_state.mode_weights['OPPOSITE'] = max(5.0, st.session_state.mode_weights['OPPOSITE'] - 1.5)
+            else:
+                # यानी 'उलटी सोच (Opposite)' सही थी
+                st.session_state.mode_weights['OPPOSITE'] = min(60.0, st.session_state.mode_weights['OPPOSITE'] + 2.0)
+                st.session_state.mode_weights['DIRECT'] = max(5.0, st.session_state.mode_weights['DIRECT'] - 1.5)
 
             # मुख्य बेट का रिजल्ट
             if act_size == st.session_state.last_pred_size:
                 st.session_state.correct_preds += 1
                 st.session_state.total_pnl += current_bet_amt * 0.95
                 st.session_state.level = 1
-                st.session_state.last_commentary = f"🎯 शानदार विन! मुख्य नियम ({st.session_state.active_rule}) सफल रहा। एआई ने सही नियम सीख लिए हैं।"
+                st.session_state.last_commentary = f"🎯 शानदार विन! {st.session_state.last_mode_used} मोड बिलकुल सही बैठा। लेवल 1 पर रीसेट।"
             else:
                 st.session_state.total_pnl -= current_bet_amt
                 st.session_state.level += 1
@@ -267,10 +274,7 @@ with col_right:
                     st.session_state.level = 1
                     st.session_state.last_commentary = "⚠️ 8 लेवल पूरे हुए। सुरक्षा के लिए लेवल 1 पर वापस।"
                 else:
-                    if rules_that_were_right:
-                        st.session_state.last_commentary = f"📉 मुख्य प्रिडिक्शन फेल, लेकिन एआई ने पहचान लिया है कि {rules_that_were_right[0]} पैटर्न चल रहा है। अगली चाल में इसे लागू करेगा।"
-                    else:
-                        st.session_state.last_commentary = f"📉 प्रिडिक्शन फेल। एआई इतिहास खंगालकर नई रणनीति बना रहा है।"
+                    st.session_state.last_commentary = f"📉 प्रिडिक्शन फेल। एआई ने समझ लिया है कि गेम का ट्रैक बदला है। मोड स्कोर अपडेट हो गए हैं।"
         else:
             st.session_state.last_commentary = "पहला परिणाम दर्ज हो गया है।"
 
@@ -301,5 +305,6 @@ with col_right:
             'SMART_COLOR_FLIP': 20.0, 'ZERO_FIVE_RULE': 20.0, 
             'NUMBER_REPEAT': 20.0, 'HISTORICAL_PATTERN': 15.0
         }
+        st.session_state.mode_weights = {'DIRECT': 25.0, 'OPPOSITE': 25.0}
         st.session_state.success_alert = "इंजन सफलतापूर्वक रीसेट हो गया है।"
         st.rerun()
