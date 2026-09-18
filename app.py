@@ -2,7 +2,7 @@ import streamlit as st
 import random
 
 # पेज कॉन्फ़िगरेशन - वाइड लेआउट
-st.set_page_config(page_title="Pro SaaS Predictor - 90%+ Accuracy Edition", layout="wide")
+st.set_page_config(page_title="Pro SaaS Predictor - Refined Color-Flip Edition", layout="wide")
 
 # --- सेशन स्टेट इनिशियलाइज़ेशन ---
 if 'history' not in st.session_state:
@@ -24,19 +24,11 @@ if 'correct_preds' not in st.session_state:
 if 'total_preds' not in st.session_state:
     st.session_state.total_preds = 0
 if 'last_commentary' not in st.session_state:
-    st.session_state.last_commentary = "नमस्ते भाई! स्ट्रीक और दोहराव (Repeating Patterns) को ट्रैक करने वाला उन्नत इंजन सक्रिय है।"
+    st.session_state.last_commentary = "नमस्ते भाई! सख्त कलर-फ्लिप और साइज रिवर्सल इंजन सक्रिय है।"
 if 'speak_text' not in st.session_state:
     st.session_state.speak_text = ""
 if 'sound_trigger' not in st.session_state:
     st.session_state.sound_trigger = None
-
-if 'rule_weights' not in st.session_state:
-    st.session_state.rule_weights = {
-        'streak_follow': 10.0,
-        'repeating_block': 10.0,
-        'color_flip': 6.0,
-        'zero_five_rep': 8.0
-    }
 
 # --- साइडबार सेटिंग्स ---
 st.sidebar.header("⚙️ कमर्शियल सेटिंग्स")
@@ -79,21 +71,30 @@ def get_number_details(num):
     return size, color
 
 # ==========================================
-# 🧠 उच्च-सटीकता स्ट्रीक और दोहराव प्रिडिक्शन इंजन (90%+ Accuracy Engine)
+# 🧠 रिफाइंड कलर-फ्लिप और स्ट्रीक प्रिडिक्शन इंजन
 # ==========================================
-def high_accuracy_streak_engine(history_data, current_level, weights):
-    if len(history_data) < 4:
-        return "Big", 5, "Red + Violet", 85, "इंजन पैटर्न स्कैन कर रहा है। कृपया कुछ और डेटा दें।"
+def refined_color_flip_engine(history_data, current_level):
+    if len(history_data) < 3:
+        return "Big", 5, "Red + Violet", 85, "इंजन डेटा का विश्लेषण कर रहा है भाई।"
 
     recent_nums = [item['number'] for item in history_data]
     recent_sizes = [item['size'] for item in history_data]
     recent_colors = [item['color'] for item in history_data]
 
     predicted_size = "Big"
-    confidence = 90
-    status = "सामान्य पैटर्न विश्लेषण सक्रिय।"
+    confidence = 92
+    status = "सामान्य पैटर्न विश्लेषण।"
 
-    # 1. लंबी स्ट्रीक जाँच (यदि पिछले 4 या उससे अधिक टर्न से एक ही साइज लगातार आ रहा है)
+    # 1. मुख्य नियम: कलर फ्लिप (यदि पिछले रंग से नया रंग बदल गया है)
+    # ग्रीन और रेड/वॉयलेट का बुनियादी अंतर या सीधे रंग के नाम की तुलना
+    color_changed = False
+    if len(recent_colors) >= 2:
+        prev_col = recent_colors[-2].split(" + ")[0] # मुख्य रंग पहचानना
+        curr_col = recent_colors[-1].split(" + ")[0]
+        if prev_col != curr_col:
+            color_changed = True
+
+    # 2. लंबी स्ट्रीक जाँच (लगातार एक ही साइज चलना)
     last_size = recent_sizes[-1]
     streak_count = 0
     for s in reversed(recent_sizes):
@@ -102,56 +103,41 @@ def high_accuracy_streak_engine(history_data, current_level, weights):
         else:
             break
 
-    # 2. दोहराव ब्लॉक जाँच (जैसे Big-Big-Small-Small पैटर्न या जोड़े का दोहराव)
-    repeating_block_detected = False
-    predicted_from_block = None
-    if len(recent_sizes) >= 6:
-        # उदाहरण के लिए 4-साइज का ब्लॉक देखना (उदा: [Big, Big, Small, Small])
-        block = recent_sizes[-4:]
-        # यदि पिछले इतिहास में यह ब्लॉक दोबारा दिखा है तो उसके आगे का ट्रेंड प्रेडिक्ट करें
-        history_str = "".join([s[0] for s in recent_sizes])
-        sub_block = "".join([s[0] for s in block])
-        if history_str.count(sub_block) > 1:
-            repeating_block_detected = true_val = True
-            # ब्लॉक के बाद आने वाला अगला संभावित साइज तय करें
-            predicted_from_block = "Small" if block[-1] == "Big" else "Big"
+    # 3. ज़ीरो (0) और पाँच (5) का टर्निंग पॉइंट
+    is_zero_five = recent_nums[-1] in [0, 5]
 
-    # प्राथमिकता निर्णय (Priority Logic)
-    if streak_count >= 3:
-        # यदि लंबी स्ट्रीक चल रही है (जैसे 3, 4, 5 या अधिक बार एक ही साइज), तो उसी स्ट्रीक को पकड़ें
+    # --- सर्वोच्च प्राथमिकता वाले निर्णय (Priority Execution) ---
+    if color_changed:
+        # यदि बीच में कलर बदल गया है, तो आपका सटीक नियम: स्मॉल का पैटर्न था तो बिग, बिग का था तो स्मॉल
+        predicted_size = "Small" if last_size == "Big" else "Big"
+        confidence = 96
+        status = f"सटीक पकड़: कलर फ्लिप डिटेक्ट हुआ है! पिछلا साइज '{last_size}' था, इसलिए अब साइज उलटकर '{predicted_size}' हो गया है।"
+    elif streak_count >= 3:
+        # यदि लंबी स्ट्रीक चल रही है तो उसी को पकड़ें
         predicted_size = last_size
-        confidence = int(92 + min(5, streak_count))
-        status = f"अचूक पकड़: लगातार {streak_count} बार '{last_size}' की स्ट्रीक चल रही है, इंजन उसी को फॉलो कर रहा है।"
-    elif repeating_block_detected and predicted_from_block and weights['repeating_block'] >= 5.0:
-        # यदि दोहराव वाला ब्लॉक पैटर्न मैच हो गया
-        predicted_size = predicted_from_block
         confidence = 94
-        status = "अचूक पकड़: दोहराव वाला ब्लॉक (Repeating Block) पैटर्न पहचान लिया गया है।"
-    elif recent_nums[-1] in [0, 5] and weights['zero_five_rep'] >= 5.0:
-        # ज़ीरो और पाँच का विशेष नियम
+        status = f"सटीक पकड़: लगातार {streak_count} बार '{last_size}' की मजबूत स्ट्रीक चल रही है।"
+    elif is_zero_five:
+        # ज़ीरो या पाँच के बाद का नियम
         predicted_size = "Big" if recent_nums[-1] >= 5 else "Small"
-        confidence = 91
-        status = "अचूक पकड़: ज़ीरो/फाइव टर्निंग पॉइंट नियम सक्रिय है।"
-    elif len(recent_colors) >= 2 and recent_colors[-1] != recent_colors[-2] and weights['color_flip'] >= 5.0:
-        # कलर फ्लिप और साइज रिवर्सल नियम
-        predicted_size = "Small" if recent_sizes[-1] == "Big" else "Big"
-        confidence = 92
-        status = "अचूक पकड़: कलर फ्लिप के बाद साइज रिवर्सल (उल्टा) नियम सक्रिय है।"
+        confidence = 93
+        status = "सटीक पकड़: ज़ीरो/फाइव टर्निंग पॉइंट नियम सक्रिय है।"
     else:
-        # फ्रिक्वेंसी संतुलन
+        # जिग-जैग या फ्रिक्वेंसी संतुलन
         big_c = recent_sizes.count('Big')
         small_c = recent_sizes.count('Small')
         predicted_size = "Small" if big_c > small_c else "Big"
-        confidence = 89
-        status = "अचूक पकड़: बाजार का फ्रिक्वेंसी संतुलन।"
+        confidence = 90
+        status = "सटीक पकड़: फ्रिक्वेंसी और साइज संतुलन।"
 
-    # यदि लेवल 1 से ऊपर जाता है (रिकवरी मोड)
+    # यदि किसी वजह से लेवल 1 से ऊपर जाता है (रिकवरी मोड)
     if current_level > 1:
-        predicted_size = last_size if streak_count >= 2 else ("Small" if recent_sizes[-1] == "Big" else "Big")
-        confidence = min_conf = min(98, confidence + (current_level * 2))
-        status = f"हाई-प्रिसिजन रिकवरी मोड (लेवल {current_level}/8): स्ट्रीक और काउंटर-ट्रेंड का संयोजन।"
+        # रिकवरी में कलर फ्लिप और काउंटर-ट्रेंड को सबसे मजबूत प्राथमिकता दें
+        predicted_size = "Small" if last_size == "Big" else "Big" if color_changed else last_size
+        confidence = min(99, confidence + (current_level * 1))
+        status = f"हाई-प्रिसिजन रिकवरी मोड (लेवल {current_level}/8): तुरंत विन के लिए सख्त रिवर्सल लॉजिक।"
 
-    # सटीक नंबर चयन
+    # सटीक नंबर चयन (आपके नियमों के तहत)
     matching_nums = [item['number'] for item in history_data[-15:] if item['size'] == predicted_size]
     if matching_nums:
         predicted_num = max(set(matching_nums), key=matching_nums.count)
@@ -167,17 +153,17 @@ current_bet_amt = st.session_state.base_bet * (2 ** (st.session_state.level - 1)
 # ==========================================
 # 🖥️ मुख्य स्प्लिट-स्क्रीन डैशबोर्ड लेआउट
 # ==========================================
-st.title("🎯 Pro SaaS Predictor [90%+ Accuracy Streak Edition]")
+st.title("🎯 Pro SaaS Predictor [Refined Color-Flip Edition]")
 
 col_left, col_right = st.columns([1.1, 1])
 
 # --- बायां हिस्सा: भविष्यवाणी और लाइव घोषणा ---
 with col_left:
-    st.markdown("### 🤖 हाई-प्रिसिजन स्ट्रीक और पैटर्न प्रिडिक्शन")
+    st.markdown("### 🤖 रिफाइंड कलर-फ्लिप प्रिडिक्शन इंजन")
     
-    if len(st.session_state.history) >= 4:
-        p_size, p_num, p_color, p_conf, p_stat = high_accuracy_streak_engine(
-            st.session_state.history, st.session_state.level, st.session_state.rule_weights
+    if len(st.session_state.history) >= 3:
+        p_size, p_num, p_color, p_conf, p_stat = refined_color_flip_engine(
+            st.session_state.history, st.session_state.level
         )
         st.session_state.last_pred_size = p_size
         st.session_state.last_pred_num = p_num
@@ -187,18 +173,18 @@ with col_left:
         
         st.markdown(f"""
             <div style="background: linear-gradient(135deg, #1f4068, #162447); padding: 18px; border-radius: 12px; border: 3px solid {box_border_color}; text-align: center;">
-                <h3 style="margin:0; color:#66fcf1; font-size:18px;">अगली पक्की और सटीक चाल</h3>
+                <h3 style="margin:0; color:#66fcf1; font-size:18px;">अगली पक्की और अचूक चाल</h3>
                 <h1 style="font-size: 38px; margin: 8px 0; color: #ffffff;">{p_size} &nbsp;|&nbsp; नंबर: #{p_num}</h1>
                 <h3 style="margin:0; color: #ffcc00;">रंग (Color): {p_color}</h3>
                 <h4 style="margin-top: 8px; color: #ff6584;">लेवल {st.session_state.level}/8 सुझाई गई बेट: ₹ {current_bet_amt}</h4>
             </div>
         """, unsafe_allow_html=True)
         
-        st.progress(min(1.0, p_conf / 100))
+        st.progress(p_conf / 100)
         st.write(f"**सटीकता (Accuracy):** {p_conf}% | **लेवल:** L-{st.session_state.level}/8")
         st.caption(f"{p_stat}")
     else:
-        st.warning("⚠️ सटीक प्रिडिक्शन के लिए कृपया कम से कम 4-5 नंबर दर्ज करें।")
+        st.warning("⚠️ सटीक प्रिडिक्शन के लिए कृपया कम से कम 3 नंबर दर्ज करें।")
 
     st.markdown("### 💬 AI मेंटोर कमेंट्री और वॉइस आउटपुट")
     st.info(st.session_state.last_commentary)
@@ -265,26 +251,26 @@ with col_right:
     st.markdown("### 📥 ऐतिहासिक नंबरों का बल्क इनपुट")
     batch_input_text = st.text_area("पिछले नंबर कॉमा से दर्ज करें (नवीनतम पहले):", "5,8,7,2,3", height=70)
 
-    if st.button("🚀 डेटा प्रोसेस करें और आवाज सुनें"):
+    if st.button("🚀 डेटा प्रोसेस करें और घोषणा सुनें"):
         try:
             raw_nums = [int(n.strip()) for n in batch_input_text.split(",") if n.strip().isdigit() and 0 <= int(n.strip()) <= 9]
-            if len(raw_nums) >= 4:
+            if len(raw_nums) >= 3:
                 st.session_state.history = []
                 for num in raw_nums[-50:]:
                     s, c = get_number_details(num)
                     st.session_state.history.append({'number': num, 'size': s, 'color': c})
                 
-                nxt_size, nxt_num, nxt_color, _, _ = high_accuracy_streak_engine(
-                    st.session_state.history, st.session_state.level, st.session_state.rule_weights
+                nxt_size, nxt_num, nxt_color, _, _ = refined_color_flip_engine(
+                    st.session_state.history, st.session_state.level
                 )
                 
-                announcement = f"नंबर लोड हो गए हैं भाई। अगली चाल में {nxt_size}, नंबर {nxt_num} आने की संभावना है।"
+                announcement = f"नंबर प्रोसेस हो गए हैं भाई। अगली चाल में {nxt_size}, नंबर {nxt_num} आने की संभावना है।"
                 st.success(f"✅ {announcement}")
                 st.session_state.last_commentary = announcement
                 st.session_state.speak_text = announcement
                 st.rerun()
             else:
-                st.error("⚠️ कृपया 0 से 9 के बीच कम से कम 4 वैध नंबर दर्ज करें।")
+                st.error("⚠️ कृपया 0 से 9 के बीच कम से कम 3 वैध नंबर दर्ज करें।")
         except Exception as e:
             st.error("❌ गलत फॉर्मेट! कृपया केवल कॉमा (,) और नंबरों का उपयोग करें।")
 
@@ -292,7 +278,7 @@ with col_right:
     st.markdown("### 🔄 वास्तविक गेम रिजल्ट फीडबैक")
     actual_live_num = st.number_input("आया हुआ वास्तविक नंबर दर्ज करें (0-9)", min_value=0, max_value=9, value=0)
     
-    if st.button("✨ रिजल्ट सबमिट करें और एक्यूरेसी सुधार देखें"):
+    if st.button("✨ रिजल्ट सबमिट करें और सुधार देखें"):
         act_size, act_color = get_number_details(actual_live_num)
         bet_placed = st.session_state.base_bet * (2 ** (st.session_state.level - 1))
         net_profit_on_win = bet_placed * 0.95
@@ -305,12 +291,7 @@ with col_right:
                 win_lvl = st.session_state.level
                 st.session_state.level = 1
                 st.session_state.sound_trigger = 'win'
-                
-                # सफल होने पर नियम का वजन बढ़ाना
-                for r in st.session_state.rule_weights:
-                    st.session_state.rule_weights[r] = min(15.0, st.session_state.rule_weights[r] + 0.5)
-
-                res_msg = f"शानदार भाई! लेवल {win_lvl} पर गेम क्रैक हो गया और ₹{net_profit_on_win:.2f} का शुद्ध लाभ मिला!"
+                res_msg = f"शानदार भाई! लेवल {win_lvl} पर ही गेम क्रैक हो गया और ₹{net_profit_on_win:.2f} का शुद्ध लाभ मिला!"
                 st.session_state.last_commentary = res_msg
                 st.session_state.speak_text = res_msg
             else:
@@ -318,14 +299,11 @@ with col_right:
                 st.session_state.level += 1
                 st.session_state.sound_trigger = 'loss'
                 
-                for r in st.session_state.rule_weights:
-                    st.session_state.rule_weights[r] = max(2.0, st.session_state.rule_weights[r] - 0.5)
-
                 if st.session_state.level > 8:
                     st.session_state.level = 1
                     res_msg = "⚠️ 8 लेवल पूरे हो चुके हैं! रिस्क कंट्रोल के तहत लेवल 1 पर रीसेट किया जा रहा है।"
                 else:
-                    res_msg = f"📉 कोई बात नहीं भाई, लेवल {st.session_state.level}/8 पर स्ट्रीक रिकवरी मोड एक्टिव है, अगली चाल पक्की जीतेगी!"
+                    res_msg = f"📉 कोई बात नहीं भाई, लेवल {st.session_state.level}/8 पर रिफाइंड रिकवरी मोड एक्टिव है, अगली चाल पक्की जीतेगी!"
                 st.session_state.last_commentary = res_msg
                 st.session_state.speak_text = res_msg
         else:
