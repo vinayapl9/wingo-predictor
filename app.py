@@ -4,10 +4,10 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 
-st.set_page_config(page_title="Pro AI Predictor v3 - Smart Hybrid", layout="wide")
+st.set_page_config(page_title="Pro AI Predictor v3.1 - Rapid Hybrid", layout="wide")
 
 # ==========================================================
-# 🔢 100% सटीक नंबर -> साइज / कलर मैपिंग (आपके नियमानुसार)
+# 🔢 100% सटीक नंबर -> साइज / कलर मैपिंग
 # ==========================================================
 NUMBER_MAP = {
     0: ("Small", "Violet + Red"),
@@ -44,11 +44,11 @@ def init_state():
         "last_base_thought": None,
         "last_mode": None,
         "last_rule_preds": {},
+        "consecutive_fails": 0, # रैपिड-स्विचिंग के लिए नया ट्रैकर
         "correct": 0,
         "total": 0,
-        "commentary": "नमस्ते भाई! प्रो हाइब्रिड एआई सक्रिय है। 100% एक्यूरेसी फोकस के साथ।",
+        "commentary": "नमस्ते भाई! रैपिड हाइब्रिड एआई सक्रिय है। यह मोड में फंसेगा नहीं, तुरंत पलटी मारेगा।",
         "alert": "",
-        # ट्रू लर्निंग वेट्स
         "rule_weights": {
             "STREAK_FOLLOWER": 30.0,
             "NUMBER_REPEAT": 28.0,
@@ -57,7 +57,6 @@ def init_state():
             "ZERO_FIVE_RULE": 20.0,
             "HISTORICAL_PATTERN": 15.0
         },
-        # हाइब्रिड मोड वेट्स (सीधा या उलटा)
         "mode_weights": {
             "DIRECT": 30.0,
             "OPPOSITE": 30.0
@@ -74,7 +73,7 @@ def rerun():
     except AttributeError: st.experimental_rerun()
 
 # ==========================================================
-# 🧠 स्मार्ट रूल्स (आपके बताए गए सटीक नियम)
+# 🧠 स्मार्ट रूल्स
 # ==========================================================
 def get_rule_predictions(nums, sizes, colors):
     preds = {}
@@ -83,15 +82,15 @@ def get_rule_predictions(nums, sizes, colors):
     last_size = sizes[-1]
     last_num = nums[-1]
 
-    # 1. स्ट्रीक फॉलोअर (Streak Follower)
+    # 1. स्ट्रीक
     if sizes[-1] == sizes[-2]:
         preds['STREAK_FOLLOWER'] = last_size
 
-    # 2. जिग-जैग पैटर्न (Zigzag)
+    # 2. जिग-जैग
     if sizes[-1] != sizes[-2]:
         preds['ZIGZAG_PATTERN'] = "Small" if last_size == "Big" else "Big"
 
-    # 3. नंबर दोहराव (Number Repeat - Historical)
+    # 3. नंबर दोहराव
     if len(nums) >= 2 and nums[-1] == nums[-2]:
         hist_action = last_size
         for i in range(len(nums)-2, 0, -1):
@@ -100,7 +99,7 @@ def get_rule_predictions(nums, sizes, colors):
                 break
         preds['NUMBER_REPEAT'] = hist_action
 
-    # 4. स्मार्ट कलर फ्लिप (Smart Color Flip - Historical)
+    # 4. स्मार्ट कलर फ्लिप
     pb = base_color(colors[-2])
     cb = base_color(colors[-1])
     if pb != cb:
@@ -111,7 +110,7 @@ def get_rule_predictions(nums, sizes, colors):
                 break
         preds['SMART_COLOR_FLIP'] = last_size if hist_action == "Same" else ("Small" if last_size == "Big" else "Big")
 
-    # 5. ज़ीरो / फाइव नियम (Zero/Five - Historical)
+    # 5. 0/5 नियम
     if last_num in [0, 5]:
         hist_05_action = "Small" if last_num == 0 else "Big"
         for i in range(len(nums)-2, -1, -1):
@@ -120,7 +119,7 @@ def get_rule_predictions(nums, sizes, colors):
                 break
         preds['ZERO_FIVE_RULE'] = hist_05_action
 
-    # 6. हिस्टोरिकल फ्लो (Markov 2-step)
+    # 6. हिस्टोरिकल
     pattern = sizes[-2:]
     hist_follows = [sizes[i+2] for i in range(len(sizes)-2) if sizes[i:i+2] == pattern]
     if hist_follows:
@@ -131,7 +130,7 @@ def get_rule_predictions(nums, sizes, colors):
     return preds
 
 # ==========================================================
-# 🚀 हाइब्रिड एआई इंजन (Direct + Opposite)
+# 🚀 रैपिड हाइब्रिड एआई इंजन
 # ==========================================================
 def hybrid_ai_engine():
     history = st.session_state.history
@@ -142,11 +141,9 @@ def hybrid_ai_engine():
     sizes = [h["size"] for h in history]
     colors = [h["color"] for h in history]
 
-    # सभी नियमों की सोच प्राप्त करें
     rule_preds = get_rule_predictions(nums, sizes, colors)
     st.session_state.last_rule_preds = rule_preds
 
-    # सबसे मजबूत नियम चुनें
     best_rule = "HISTORICAL_PATTERN"
     max_weight = -1
     base_thought = "Big"
@@ -158,11 +155,11 @@ def hybrid_ai_engine():
             best_rule = rule
             base_thought = pred
 
-    # हाइब्रिड डिसीजन (गेम सीधा है या उलटा?)
+    # हाइब्रिड डिसीजन (कौन सा मोड ज्यादा मजबूत है?)
     if st.session_state.mode_weights['OPPOSITE'] > st.session_state.mode_weights['DIRECT']:
         final_size = "Small" if base_thought == "Big" else "Big"
         mode = "OPPOSITE"
-        stat = f"🔄 रिवर्स हैक: {best_rule} ने '{base_thought}' चुना था, लेकिन उलटे पैटर्न के कारण '{final_size}' दिया गया।"
+        stat = f"🔄 रिवर्स हैक: {best_rule} ने '{base_thought}' चुना था, लेकिन मोड के अनुसार '{final_size}' दिया।"
     else:
         final_size = base_thought
         mode = "DIRECT"
@@ -170,7 +167,6 @@ def hybrid_ai_engine():
 
     conf = min(98, int(85 + (max_weight / 2.5)))
 
-    # नंबर चयन (Probability Based)
     cands = [n for n in nums[-30:] if num_size(n) == final_size]
     if cands:
         final_num = max(set(cands), key=cands.count)
@@ -182,7 +178,7 @@ def hybrid_ai_engine():
     return final_size, final_num, final_color, conf, best_rule, mode, base_thought, stat
 
 # ==========================================================
-# 🖥️ साइडबार और सेटिंग्स
+# 🖥️ साइडबार और UI
 # ==========================================================
 with st.sidebar:
     st.header("⚙️ प्रो सेटिंग्स")
@@ -197,13 +193,7 @@ with st.sidebar:
         st.session_state.alert = "✅ सेशन पूरी तरह रीसेट हो गया है!"
         rerun()
 
-    st.markdown("---")
-    st.caption("यह एक्यूरेसी-फोकस्ड टूल है। आपके नियम 100% लागू हैं।")
-
-# ==========================================================
-# 🎯 मुख्य डैशबोर्ड (Simple & Informative UI)
-# ==========================================================
-st.title("🎯 Pro Master AI v3 - Hybrid Rules Edition")
+st.title("🎯 Pro Master AI v3.1 - Rapid Switcher")
 
 col_left, col_right = st.columns([1.2, 1])
 
@@ -238,7 +228,7 @@ with col_left:
         with st.expander("🧠 एआई लर्निंग वेट्स (नियमों की ताकत)", expanded=False):
             df_rules = pd.DataFrame(list(st.session_state.rule_weights.items()), columns=["नियम", "स्कोर"]).sort_values("स्कोर", ascending=False)
             st.dataframe(df_rules, use_container_width=True, hide_index=True)
-            st.write(f"**डायनेमिक मोड ट्रैकर:** DIRECT ({st.session_state.mode_weights['DIRECT']:.1f}) | OPPOSITE ({st.session_state.mode_weights['OPPOSITE']:.1f})")
+            st.write(f"**स्विचर ट्रैकर:** DIRECT ({st.session_state.mode_weights['DIRECT']:.1f}) | OPPOSITE ({st.session_state.mode_weights['OPPOSITE']:.1f})")
 
     else:
         st.warning("⚠️ एआई को पैटर्न समझने के लिए कम से कम 3 नंबर दर्ज करें।")
@@ -249,7 +239,6 @@ with col_left:
     if st.session_state.pnl_curve:
         st.markdown("### 📈 प्रॉफिट / लॉस चार्ट")
         st.line_chart(st.session_state.pnl_curve)
-
 
 with col_right:
     st.markdown("### 📥 ऐतिहासिक डेटा डालें")
@@ -263,8 +252,6 @@ with col_right:
                     st.session_state.history.append({"number": n, "size": num_size(n), "color": num_color(n)})
                 st.session_state.alert = f"✅ {len(raw)} नंबर लोड हो गए।"
                 rerun()
-            else:
-                st.error("कम से कम 3 वैध नंबर चाहिए।")
         except Exception:
             st.error("❌ गलत फॉर्मेट।")
 
@@ -275,7 +262,6 @@ with col_right:
         st.success(st.session_state.alert)
         st.session_state.alert = ""
 
-    # क्विक इनपुट बटन्स
     st.write("नंबर चुनें:")
     cols = st.columns(5)
     for i in range(10):
@@ -292,35 +278,54 @@ with col_right:
         if st.session_state.last_pred_size is not None:
             st.session_state.total += 1
             
-            # --- 1. नियम वेट अपडेट (Rules Weight Update) ---
+            # --- 1. नियम वेट अपडेट ---
             for rule, pred_s in st.session_state.last_rule_preds.items():
                 if pred_s == act_size:
                     st.session_state.rule_weights[rule] = min(60.0, st.session_state.rule_weights[rule] + 2.0)
                 else:
                     st.session_state.rule_weights[rule] = max(5.0, st.session_state.rule_weights[rule] - 1.5)
 
-            # --- 2. हाइब्रिड मोड अपडेट (Direct vs Opposite) ---
-            if st.session_state.last_base_thought == act_size:
-                st.session_state.mode_weights['DIRECT'] = min(60.0, st.session_state.mode_weights['DIRECT'] + 2.5)
-                st.session_state.mode_weights['OPPOSITE'] = max(5.0, st.session_state.mode_weights['OPPOSITE'] - 1.5)
-            else:
-                st.session_state.mode_weights['OPPOSITE'] = min(60.0, st.session_state.mode_weights['OPPOSITE'] + 2.5)
-                st.session_state.mode_weights['DIRECT'] = max(5.0, st.session_state.mode_weights['DIRECT'] - 1.5)
+            # --- 2. रैपिड-स्विचिंग हाइब्रिड अपडेट ---
+            mode_that_was_correct = "DIRECT" if st.session_state.last_base_thought == act_size else "OPPOSITE"
+            mode_that_was_wrong = "OPPOSITE" if mode_that_was_correct == "DIRECT" else "DIRECT"
 
-            # --- 3. प्रिडिक्शन रिजल्ट चेक ---
+            # जो मोड सही साबित हुआ, उसे रिवॉर्ड दें और फेल काउंटर रीसेट करें
+            st.session_state.mode_weights[mode_that_was_correct] = min(60.0, st.session_state.mode_weights[mode_that_was_correct] + 3.0)
+            
             if act_size == st.session_state.last_pred_size:
+                # यदि एआई की फाइनल प्रिडिक्शन सही थी
+                st.session_state.consecutive_fails = 0
                 st.session_state.correct += 1
                 st.session_state.total_pnl += bet * 0.95
                 st.session_state.level = 1
-                st.session_state.commentary = f"🎯 शानदार विन! {st.session_state.last_mode} मोड और नियम सही साबित हुए। लेवल 1 पर रीसेट।"
+                st.session_state.commentary = f"🎯 शानदार विन! {st.session_state.last_mode} मोड और नियम एकदम सटीक बैठे।"
             else:
+                # यदि एआई की फाइनल प्रिडिक्शन फेल हो गई
+                st.session_state.consecutive_fails += 1
                 st.session_state.total_pnl -= bet
                 st.session_state.level += 1
+                
+                # शार्प पेनाल्टी: जो मोड फेल हुआ है, उसका वेट तेजी से घटाएं
+                st.session_state.mode_weights[st.session_state.last_mode] -= 8.0 
+                
+                # अगर लगातार 2 बार फेल होता है, तो तुरंत फोर्स-स्विच कर दें
+                if st.session_state.consecutive_fails >= 2:
+                    st.session_state.mode_weights[mode_that_was_correct] += 15.0 # दूसरे मोड को भारी बूस्ट दें
+                    st.session_state.consecutive_fails = 0
+                    mode_msg = f" ⚠️ लगातार फेलियर के कारण एआई ने मोड को '{mode_that_was_correct}' पर पलट दिया है।"
+                else:
+                    mode_msg = " एआई ने वेट्स एडजस्ट कर लिए हैं।"
+
                 if st.session_state.level > 8:
                     st.session_state.level = 1
-                    st.session_state.commentary = "⚠️ 8 लेवल पूरे हुए। सुरक्षा के लिए लेवल 1 पर वापस।"
+                    st.session_state.commentary = "⚠️ 8 लेवल पूरे हुए। सुरक्षा के लिए लेवल 1 पर वापस।" + mode_msg
                 else:
-                    st.session_state.commentary = f"📉 प्रिडिक्शन फेल। एआई ने मोड और रूल्स के वेट्स को एडजस्ट कर लिया है।"
+                    st.session_state.commentary = f"📉 प्रिडिक्शन फेल।" + mode_msg
+
+            # ओवरफ्लो/अंडरफ्लो रोकना
+            st.session_state.mode_weights['DIRECT'] = max(5.0, min(60.0, st.session_state.mode_weights['DIRECT']))
+            st.session_state.mode_weights['OPPOSITE'] = max(5.0, min(60.0, st.session_state.mode_weights['OPPOSITE']))
+
         else:
             st.session_state.commentary = "पहला परिणाम दर्ज हुआ। एआई ने ट्रैकिंग शुरू कर दी है।"
 
@@ -333,7 +338,6 @@ with col_right:
         st.session_state.alert = f"✅ दर्ज: #{live_num} ({act_size} / {act_color})"
         rerun()
 
-    # ------- परफॉरमेंस -------
     st.markdown("### 📊 लाइव स्टैट्स")
     m1, m2, m3 = st.columns(3)
     m1.metric("Net P/L", f"₹ {st.session_state.total_pnl:.2f}")
